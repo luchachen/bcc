@@ -548,6 +548,8 @@ bool BTypeVisitor::VisitVarDecl(VarDecl *Decl) {
       }
       ++i;
     }
+    string sysbpf = "/sys/fs/bpf/bcc-";
+    bool is_extern = false;
     bpf_map_type map_type = BPF_MAP_TYPE_UNSPEC;
     if (A->getName() == "maps/hash") {
       map_type = BPF_MAP_TYPE_HASH;
@@ -576,23 +578,55 @@ bool BTypeVisitor::VisitVarDecl(VarDecl *Decl) {
     } else if (A->getName() == "maps/perf_array") {
       if (KERNEL_VERSION(major,minor,0) >= KERNEL_VERSION(4,3,0))
         map_type = BPF_MAP_TYPE_PERF_EVENT_ARRAY;
+    } else if (A->getName() == "maps/extern") {
+      if (KERNEL_VERSION(major,minor,0) >= KERNEL_VERSION(4,4,0)) {
+        is_extern = true;
+        table.fd = bpf_obj_get((sysbpf + table.name).c_str());
+      }
+    } else if (A->getName() == "maps/export") {
+      if (KERNEL_VERSION(major,minor,0) >= KERNEL_VERSION(4,4,0)) {
+        if (table.name.substr(0, 2) == "__")
+          table.name = table.name.substr(2);
+        auto table_it = tables_.begin();
+        for (; table_it != tables_.end(); ++table_it)
+          if (table_it->name == table.name) break;
+        if (table_it == tables_.end()) {
+          unsigned diag_id = C.getDiagnostics().getCustomDiagID(DiagnosticsEngine::Error,
+                                                                "reference to undefined table");
+          C.getDiagnostics().Report(Decl->getLocStart(), diag_id);
+          return false;
+        }
+        string fname = sysbpf + table.name;
+        unlink(fname.c_str());
+        if (bpf_obj_pin(table_it->fd, fname.c_str()) < 0) {
+          unsigned diag_id = C.getDiagnostics().getCustomDiagID(DiagnosticsEngine::Error,
+                                                                "could not pin bpf map %0: %1");
+          C.getDiagnostics().Report(Decl->getLocStart(), diag_id) << fname << strerror(errno);
+          return false;
+        }
+      }
+      // return early, this entry should not be saved anywhere
+      return true;
     }
 
-    if (map_type == BPF_MAP_TYPE_UNSPEC) {
-      unsigned diag_id = C.getDiagnostics().getCustomDiagID(DiagnosticsEngine::Error,
-                                                            "unsupported map type: %0");
-      C.getDiagnostics().Report(Decl->getLocStart(), diag_id) << A->getName();
-      return false;
-    }
+    if (!is_extern) {
+      if (map_type == BPF_MAP_TYPE_UNSPEC) {
+        unsigned diag_id = C.getDiagnostics().getCustomDiagID(DiagnosticsEngine::Error,
+                                                              "unsupported map type: %0");
+        C.getDiagnostics().Report(Decl->getLocStart(), diag_id) << A->getName();
+        return false;
+      }
 
-    table.type = map_type;
-    table.fd = bpf_create_map(map_type, table.key_size, table.leaf_size, table.max_entries);
+      table.type = map_type;
+      table.fd = bpf_create_map(map_type, table.key_size, table.leaf_size, table.max_entries);
+    }
     if (table.fd < 0) {
       unsigned diag_id = C.getDiagnostics().getCustomDiagID(DiagnosticsEngine::Error,
                                                             "could not open bpf map: %0");
       C.getDiagnostics().Report(Decl->getLocStart(), diag_id) << strerror(errno);
       return false;
     }
+
     tables_.push_back(std::move(table));
   } else if (const PointerType *P = Decl->getType()->getAs<PointerType>()) {
     // if var is a pointer to a packet type, clone the annotation into the var

@@ -83,6 +83,23 @@ int bpf_create_map(enum bpf_map_type map_type, int key_size, int value_size, int
   return ret;
 }
 
+int bpf_obj_pin(int fd, const char *pathname) {
+  union bpf_attr attr;
+  memset(&attr, 0, sizeof(attr));
+  attr.pathname = ptr_to_u64((void *)pathname);
+  attr.bpf_fd = fd;
+
+  return syscall(__NR_bpf, BPF_OBJ_PIN, &attr, sizeof(attr));
+}
+
+int bpf_obj_get(const char *pathname) {
+  union bpf_attr attr;
+  memset(&attr, 0, sizeof(attr));
+  attr.pathname = ptr_to_u64((void *)pathname);
+
+  return syscall(__NR_bpf, BPF_OBJ_GET, &attr, sizeof(attr));
+}
+
 int bpf_update_elem(int fd, void *key, void *value, unsigned long long flags)
 {
   union bpf_attr attr;
