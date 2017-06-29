@@ -190,6 +190,8 @@ int ClangLoader::parse(unique_ptr<llvm::Module> *mod, TableStorage &ts,
   driver::Driver drv("", "s390x-ibm-linux-gnu", diags);
 #elif defined(__aarch64__)
   driver::Driver drv("", "aarch64-unknown-linux-gnu", diags);
+#elif defined(__arm__)
+  driver::Driver drv("", "armv7l-unknown-linux-gnueabi", diags);
 #else
   driver::Driver drv("", "x86_64-unknown-linux-gnu", diags);
 #endif

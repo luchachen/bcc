@@ -46,6 +46,10 @@ const char *calling_conv_regs_s390x[] = {"gprs[2]", "gprs[3]", "gprs[4]",
 
 const char *calling_conv_regs_arm64[] = {"regs[0]", "regs[1]", "regs[2]",
                                        "regs[3]", "regs[4]", "regs[5]"};
+
+const char *calling_conv_regs_arm[] = {"uregs[0]", "uregs[1]", "uregs[2]",
+                                       "uregs[3]"};
+
 // todo: support more archs
 #if defined(__powerpc__)
 const char **calling_conv_regs = calling_conv_regs_ppc;
@@ -53,6 +57,8 @@ const char **calling_conv_regs = calling_conv_regs_ppc;
 const char **calling_conv_regs = calling_conv_regs_s390x;
 #elif defined(__aarch64__)
 const char **calling_conv_regs = calling_conv_regs_arm64;
+#elif defined(__arm__)
+const char **calling_conv_regs = calling_conv_regs_arm;
 #else
 const char **calling_conv_regs = calling_conv_regs_x86;
 #endif
