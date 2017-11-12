@@ -477,8 +477,10 @@ class BPF(object):
             blacklist = set([line.rstrip().split()[1] for line in
                     blacklist_file])
         fns = []
+        fh = open("/tmp/bcc.tmp", "w")
         with open("%s/available_filter_functions" % TRACEFS) as avail_file:
             for line in avail_file:
+                fh.write(line)
                 fn = line.rstrip().split()[0]
                 if re.match(event_re, fn) and fn not in blacklist:
                     fns.append(fn)
