@@ -767,6 +767,9 @@ bool BTypeVisitor::VisitVarDecl(VarDecl *Decl) {
         return false;
       }
 
+	// int bpf_create_map(enum bpf_map_type map_type, int key_size, int value_size, int max_entries, int map_flags)
+      printf("BPF_CREATE_MAP %d %d %d %d %d\n", map_type, table.key_size, table.leaf_size, table.max_entries, table.flags);
+
       table.type = map_type;
       table.fd = bpf_create_map(map_type, table.name.c_str(),
                                 table.key_size, table.leaf_size,
