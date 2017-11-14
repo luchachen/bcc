@@ -22,6 +22,7 @@ import re
 import struct
 import errno
 import sys
+import base64
 basestring = (unicode if sys.version_info[0] < 3 else str)
 
 from .libbcc import lib, _CB_TYPE, bcc_symbol, bcc_symbol_option, _SYM_CB_TYPE
@@ -315,10 +316,25 @@ class BPF(object):
         return fns
 
     def load_func(self, func_name, prog_type):
+
         if func_name in self.funcs:
             return self.funcs[func_name]
+
         if not lib.bpf_function_start(self.module, func_name.encode("ascii")):
             raise Exception("Unknown program %s" % func_name)
+
+        ct_func_start = lib.bpf_function_start(self.module, func_name.encode("ascii"))
+        ct_func_size  = lib.bpf_function_size(self.module, func_name.encode("ascii"))
+
+        # Command format: BPF_PROG_LOAD type prog_len license kern_version binary_data
+
+        func_str = ct.string_at(ct_func_start, ct_func_size)
+        license_str = ct.string_at(lib.bpf_module_license(self.module))
+        kern_version = lib.bpf_module_kern_version(self.module)
+
+        print("func {} \nBPF_PROG_LOAD {} {} {} {} {}\n".format(func_name, prog_type,
+            len(func_str), license_str, kern_version, base64.b64encode(func_str)))
+
         buffer_len = LOG_BUFFER_SIZE
         while True:
             log_buf = ct.create_string_buffer(buffer_len) if self.debug else None
