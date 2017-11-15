@@ -24,6 +24,18 @@
 extern "C" {
 #endif
 
+typedef void (*bpf_create_map_cb_t)(void *cb_cookie, void *data);
+struct bpf_create_map_args {
+	unsigned int type;
+	unsigned int key_size;
+	unsigned int value_size;
+	unsigned int max_entries;
+	unsigned int map_flags;
+};
+
+extern bpf_create_map_cb_t bpf_create_map_cb;
+extern void * bpf_create_map_cookie;
+
 enum bpf_probe_attach_type {
 	BPF_PROBE_ENTRY,
 	BPF_PROBE_RETURN
