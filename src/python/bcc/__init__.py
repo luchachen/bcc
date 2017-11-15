@@ -22,10 +22,10 @@ import re
 import struct
 import errno
 import sys
-import base64
+from remote import libremote
 basestring = (unicode if sys.version_info[0] < 3 else str)
 
-from .libbcc import lib, _CB_TYPE, bcc_symbol, bcc_symbol_option, _SYM_CB_TYPE
+from .libbcc import lib, bcc_symbol, bcc_symbol_option, _CB_TYPE, _SYM_CB_TYPE, _MAP_CB_TYPE
 from .table import Table, PerfEventArray
 from .perf import Perf
 from .utils import get_online_cpus
@@ -118,6 +118,13 @@ class PerfSWConfig:
     EMULATION_FAULTS = 8
     DUMMY = 9
     BPF_OUTPUT = 10
+
+class BpfCreateMapArgs(ct.Structure):
+    _fields_ = [("type", ct.c_uint),
+                ("key_size", ct.c_uint),
+                ("value_size", ct.c_uint),
+                ("max_entries", ct.c_uint),
+                ("map_flags", ct.c_uint)]
 
 class BPF(object):
     # From bpf_prog_type in uapi/linux/bpf.h
@@ -254,6 +261,9 @@ class BPF(object):
                 DEBUG_PREPROCESSOR: print Preprocessed C file to stderr
         """
 
+        # Debug code
+        self.libremote = libremote.LibRemote('shell')
+
         self.open_kprobes = {}
         self.open_uprobes = {}
         self.open_tracepoints = {}
@@ -281,7 +291,8 @@ class BPF(object):
 
         if text:
             self.module = lib.bpf_module_create_c_from_string(text.encode("ascii"),
-                    self.debug, cflags_array, len(cflags_array))
+                    self.debug, cflags_array, len(cflags_array), _MAP_CB_TYPE(BPF._bpf_create_map_cb),
+                    ct.cast(id(self), ct.py_object))
         else:
             src_file = BPF._find_file(src_file)
             hdr_file = BPF._find_file(hdr_file)
@@ -290,7 +301,8 @@ class BPF(object):
                         hdr_file.encode("ascii"), self.debug)
             else:
                 self.module = lib.bpf_module_create_c(src_file.encode("ascii"),
-                        self.debug, cflags_array, len(cflags_array))
+                        self.debug, cflags_array, len(cflags_array), _MAP_CB_TYPE(BPF._bpf_create_map_cb),
+                        ct.cast(id(self), ct.py_object))
 
         if not self.module:
             raise Exception("Failed to compile BPF module %s" % src_file)
@@ -332,8 +344,9 @@ class BPF(object):
         license_str = ct.string_at(lib.bpf_module_license(self.module))
         kern_version = lib.bpf_module_kern_version(self.module)
 
-        print("func {} \nBPF_PROG_LOAD {} {} {} {} {}\n".format(func_name, prog_type,
-            len(func_str), license_str, kern_version, base64.b64encode(func_str)))
+        if self.libremote:
+            self.libremote.bpf_prog_load(prog_type, func_str, license_str,
+                                      kern_version)
 
         buffer_len = LOG_BUFFER_SIZE
         while True:
@@ -468,6 +481,11 @@ class BPF(object):
             cc = tuple(callchain[i] for i in range(0, callchain_num))
             self._user_cb(pid, cc)
 
+    def _bpf_create_map_cb(self, data):
+        args = ct.cast(data, ct.POINTER(BpfCreateMapArgs)).contents
+        self.libremote.bpf_create_map(args.type, args.key_size, args.value_size,
+                        args.max_entries, args. map_flags)
+
     @staticmethod
     def attach_raw_socket(fn, dev):
         if not isinstance(fn, BPF.Function):
@@ -484,18 +502,25 @@ class BPF(object):
         fn.sock = sock
 
     @staticmethod
-    def get_kprobe_functions(event_re):
-        with open("%s/../kprobes/blacklist" % TRACEFS) as blacklist_file:
-            blacklist = set([line.rstrip().split()[1] for line in
-                    blacklist_file])
+    def get_kprobe_functions(event_re, libremote=None):
+        if libremote:
+            blacklist = libremote.kprobes_blacklist(TRACEFS)
+        else:
+            with open("%s/../kprobes/blacklist" % TRACEFS) as blacklist_file:
+                blacklist = set([line.rstrip().split()[1] for line in
+                        blacklist_file])
+
         fns = []
-        fh = open("/tmp/bcc.tmp", "w")
-        with open("%s/available_filter_functions" % TRACEFS) as avail_file:
-            for line in avail_file:
-                fh.write(line)
-                fn = line.rstrip().split()[0]
-                if re.match(event_re, fn) and fn not in blacklist:
+
+        if libremote:
+            fns = libremote.available_filter_functions(TRACEFS)
+        else:
+            with open("%s/available_filter_functions" % TRACEFS) as avail_file:
+                for line in avail_file:
+                    fn = line.rstrip().split()[0]
                     fns.append(fn)
+
+        fns = [fn for fn in fns if (re.match(event_re, fn) and fn not in blacklist)]
         return set(fns)     # Some functions may appear more than once
 
     def _check_probe_quota(self, num_new_probes):
@@ -518,7 +543,7 @@ class BPF(object):
 
         # allow the caller to glob multiple functions together
         if event_re:
-            matches = BPF.get_kprobe_functions(event_re)
+            matches = BPF.get_kprobe_functions(event_re, self.libremote)
             self._check_probe_quota(len(matches))
             for line in matches:
                 try:
@@ -557,7 +582,7 @@ class BPF(object):
 
         # allow the caller to glob multiple functions together
         if event_re:
-            for line in BPF.get_kprobe_functions(event_re):
+            for line in BPF.get_kprobe_functions(event_re, self.libremote):
                 try:
                     self.attach_kretprobe(event=line, fn_name=fn_name, pid=pid,
                             cpu=cpu, group_fd=group_fd)
