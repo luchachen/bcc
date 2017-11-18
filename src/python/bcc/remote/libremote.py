@@ -15,6 +15,7 @@
 
 import sys
 import base64
+import re
 from shell import ShellRemote
 
 def get_remote_cls(cls_name):
@@ -50,7 +51,15 @@ class LibRemote(object):
         func_str_b64 = base64.b64encode(func_str)
         cmd = "BPF_PROG_LOAD {} {} {} {} {}".format(prog_type, len(func_str),
               license_str, kern_version, base64.b64encode(func_str))
-        return self.remote.send_command(cmd)
+        ret = self.remote.send_command(cmd)
+        if not ret:
+            return -1
+
+        m = re.search("ret=(\d+)", ret[0])
+        if m == None:
+            return -1
+
+        return int(m.group(1))
 
     def bpf_create_map(self, map_type, key_size, leaf_size, max_entries,
                        flags):
