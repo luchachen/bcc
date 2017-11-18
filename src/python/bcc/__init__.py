@@ -291,7 +291,7 @@ class BPF(object):
 
         if text:
             self.module = lib.bpf_module_create_c_from_string(text.encode("ascii"),
-                    self.debug, cflags_array, len(cflags_array), _MAP_CB_TYPE(BPF._bpf_create_map_cb),
+                    self.debug, cflags_array, len(cflags_array), _MAP_CB_TYPE(BPF._bpf_remote_create_map_cb),
                     ct.cast(id(self), ct.py_object))
         else:
             src_file = BPF._find_file(src_file)
@@ -301,7 +301,7 @@ class BPF(object):
                         hdr_file.encode("ascii"), self.debug)
             else:
                 self.module = lib.bpf_module_create_c(src_file.encode("ascii"),
-                        self.debug, cflags_array, len(cflags_array), _MAP_CB_TYPE(BPF._bpf_create_map_cb),
+                        self.debug, cflags_array, len(cflags_array), _MAP_CB_TYPE(BPF._bpf_remote_create_map_cb),
                         ct.cast(id(self), ct.py_object))
 
         if not self.module:
@@ -481,7 +481,9 @@ class BPF(object):
             cc = tuple(callchain[i] for i in range(0, callchain_num))
             self._user_cb(pid, cc)
 
-    def _bpf_create_map_cb(self, data):
+    def _bpf_remote_create_map_cb(self, data):
+        if not self.libremote:
+            return
         args = ct.cast(data, ct.POINTER(BpfCreateMapArgs)).contents
         self.libremote.bpf_create_map(args.type, args.key_size, args.value_size,
                         args.max_entries, args. map_flags)
