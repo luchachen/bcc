@@ -35,7 +35,11 @@ class ShellRemote(base.BccRemote):
         print 'Sending command {}'.format(cmd)
         c = self.client
         c.sendline(cmd)
-        c.expect('END_BPFD_OUTPUT')
+
+        try:
+            c.expect('END_BPFD_OUTPUT')
+        except pe.exceptions.EOF:
+            return ''
 
         ret = c.before.split('\n')
 
