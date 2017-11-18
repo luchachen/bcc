@@ -38,6 +38,14 @@ class LibRemote(object):
         cmd = "GET_KPROBES_BLACKLIST {}".format(tracefs)
         return self.remote.send_command(cmd)
 
+    def get_trace_events(self, tracefs, cat):
+        cmd = "GET_TRACE_EVENTS {} {}".format(tracefs, cat)
+        return self.remote.send_command(cmd)
+
+    def get_trace_events_categories(self, tracefs):
+        cmd = "GET_TRACE_EVENTS_CATEGORIES {}".format(tracefs)
+        return self.remote.send_command(cmd)
+
     def bpf_prog_load(self, prog_type, func_str, license_str, kern_version):
         func_str_b64 = base64.b64encode(func_str)
         cmd = "BPF_PROG_LOAD {} {} {} {} {}".format(prog_type, len(func_str),
