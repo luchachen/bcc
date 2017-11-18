@@ -673,7 +673,34 @@ class BPF(object):
         return libpath
 
     @staticmethod
-    def get_tracepoints(tp_re):
+    def get_tracepoints_libremote(tp_re, libr):
+        results = []
+        cat_list = libr.get_trace_events_categories(TRACEFS)
+        for category in cat_list:
+            for event in libr.get_trace_events(TRACEFS, category):
+                tp = ("%s:%s" % (category, event))
+                if re.match(tp_re, tp):
+                    results.append(tp)
+        return results
+
+    @staticmethod
+    def get_tracepoints_remote(tp_re, remote):
+        """
+        For getting tracepoints before BPF object and its libremote
+        can be initialized. Here we have to create a temporary
+        libremote object to get the tracepoints remotely.
+        """
+        libr = libremote.LibRemote(remote)
+        return BPF.get_tracepoints_libremote(tp_re, libr)
+
+    @staticmethod
+    def get_tracepoints(tp_re, remote=None, bpf_obj=None):
+        if remote:
+            return get_tracepoints_remote(tp_re, remote)
+
+        if bpf_obj != None and bpf_obj.libremote != None:
+            return BPF.get_tracepoints_libremote(tp_re, bpf_obj.libremote)
+
         results = []
         events_dir = os.path.join(TRACEFS, "events")
         for category in os.listdir(events_dir):
@@ -712,7 +739,7 @@ class BPF(object):
         """
 
         if tp_re:
-            for tp in BPF.get_tracepoints(tp_re):
+            for tp in BPF.get_tracepoints(tp_re, bpf_obj=self):
                 self.attach_tracepoint(tp=tp, fn_name=fn_name, pid=pid,
                                        cpu=cpu, group_fd=group_fd)
             return
