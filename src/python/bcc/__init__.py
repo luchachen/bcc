@@ -693,7 +693,9 @@ class BPF(object):
         libremote object to get the tracepoints remotely.
         """
         libr = libremote.LibRemote(remote)
-        return BPF.get_tracepoints_libremote(tp_re, libr)
+        ret = BPF.get_tracepoints_libremote(tp_re, libr)
+        self.libremote.close_connection()
+        return ret
 
     @staticmethod
     def get_tracepoints(tp_re, remote=None, bpf_obj=None):

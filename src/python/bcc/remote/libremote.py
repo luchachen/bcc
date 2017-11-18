@@ -58,6 +58,10 @@ class LibRemote(object):
                                     leaf_size, max_entries, flags)
         return self.remote.send_command(cmd)
 
+    def close_connection(self):
+        self.remote.send_command("exit")
+        self.remote.close_connection()
+
 # Test
 # libremote = LibRemote('shell')
 
