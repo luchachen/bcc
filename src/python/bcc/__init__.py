@@ -197,10 +197,12 @@ class BPF(object):
     Table = Table
 
     class Function(object):
-        def __init__(self, bpf, name, fd):
+        def __init__(self, bpf, name, fd, remotefd=-1):
             self.bpf = bpf
             self.name = name
             self.fd = fd
+            # Temporary for testing, remotes will use self.fd later
+            self.remotefd = remotefd
 
     @staticmethod
     def _find_file(filename):
@@ -345,7 +347,7 @@ class BPF(object):
         kern_version = lib.bpf_module_kern_version(self.module)
 
         if self.libremote:
-            self.libremote.bpf_prog_load(prog_type, func_str, license_str,
+            remotefd = self.libremote.bpf_prog_load(prog_type, func_str, license_str,
                                       kern_version)
 
         buffer_len = LOG_BUFFER_SIZE
@@ -374,7 +376,7 @@ class BPF(object):
             raise Exception("Failed to load BPF program %s: %s" %
                             (func_name, errstr))
 
-        fn = BPF.Function(self, func_name, fd)
+        fn = BPF.Function(self, func_name, fd, remotefd)
         self.funcs[func_name] = fn
 
         return fn
