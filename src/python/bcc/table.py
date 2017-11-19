@@ -17,6 +17,7 @@ import ctypes as ct
 from functools import reduce
 import multiprocessing
 import os
+import base64
 
 from .libbcc import lib, _RAW_CB_TYPE, _LOST_CB_TYPE
 from .perf import Perf
@@ -143,6 +144,8 @@ def Table(bpf, map_id, map_fd, keytype, leaftype, **kwargs):
         t = LruPerCpuHash(bpf, map_id, map_fd, keytype, leaftype)
     if t == None:
         raise Exception("Unknown table type %d" % ttype)
+    if 'libremote' in kwargs:
+        t.libremote = kwargs['libremote']
     return t
 
 
@@ -157,6 +160,7 @@ class TableBase(MutableMapping):
         self.ttype = lib.bpf_table_type_id(self.bpf.module, self.map_id)
         self.flags = lib.bpf_table_flags_id(self.bpf.module, self.map_id)
         self._cbs = {}
+        self.libremote = None
 
     def key_sprintf(self, key):
         key_p = ct.pointer(key)
@@ -198,9 +202,30 @@ class TableBase(MutableMapping):
         key_p = ct.pointer(key)
         leaf = self.Leaf()
         leaf_p = ct.pointer(leaf)
-        res = lib.bpf_lookup_elem(self.map_fd,
-                ct.cast(key_p, ct.c_void_p),
-                ct.cast(leaf_p, ct.c_void_p))
+
+        print("get item {}\n".format(key))
+        if True: #self.libremote:
+            try:
+                kstr = ct.string_at(key_p)
+            except:
+                raise Exception('base64 error')
+            key_str = base64.b64encode(kstr, ct.sizeof(self.Key))
+
+            print("Sending key bin {}".format(key_str))
+
+            # res = self.libremote.bpf_lookup_elem(self.map_fd, key_str,
+            #                                     ct.sizeof(self.Leaf))
+            # if type(res) != str:
+            #    raise KeyError
+
+            # res is a base64 encoded binary of leaf
+            # leaf_str = base64.b64decode(res)
+            # leaf_ct = ct.c_char_p(leaf_str)
+            # ct.memmove(leaf, leaf_ct, ct.sizeof(self.Leaf))
+        if True:
+            res = lib.bpf_lookup_elem(self.map_fd,
+                    ct.cast(key_p, ct.c_void_p),
+                    ct.cast(leaf_p, ct.c_void_p))
         if res < 0:
             raise KeyError
         return leaf
@@ -208,9 +233,14 @@ class TableBase(MutableMapping):
     def __setitem__(self, key, leaf):
         key_p = ct.pointer(key)
         leaf_p = ct.pointer(leaf)
-        res = lib.bpf_update_elem(self.map_fd,
-                ct.cast(key_p, ct.c_void_p),
-                ct.cast(leaf_p, ct.c_void_p), 0)
+        if False: #self.libremote:
+            res = self.libremote.bpf_update_elem(self.map_fd, key, leaf,
+                                                 ct.sizeof(self.Key),
+                                                 ct.sizeof(self.Leaf))
+        else:
+            res = lib.bpf_update_elem(self.map_fd,
+                    ct.cast(key_p, ct.c_void_p),
+                    ct.cast(leaf_p, ct.c_void_p), 0)
         if res < 0:
             errstr = os.strerror(ct.get_errno())
             raise Exception("Could not update table: %s" % errstr)
