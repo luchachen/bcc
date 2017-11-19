@@ -349,6 +349,8 @@ class BPF(object):
         if self.libremote:
             remotefd = self.libremote.bpf_prog_load(prog_type, func_str, license_str,
                                       kern_version)
+        else:
+            remotefd = -1
 
         buffer_len = LOG_BUFFER_SIZE
         while True:
