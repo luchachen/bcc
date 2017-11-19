@@ -47,6 +47,11 @@ class LibRemote(object):
         cmd = "GET_TRACE_EVENTS_CATEGORIES {}".format(tracefs)
         return self.remote.send_command(cmd)
 
+    def bpf_attach_tracepoint(self, fd, cat, tpname, pid, cpu, gfd):
+        cmd = "BPF_ATTACH_TRACEPOINT {} {} {} {} {} {}".format(fd,
+            cat, tpname, pid, cpu, gfd)
+        return self.remote.send_command(cmd)
+
     def bpf_prog_load(self, prog_type, func_str, license_str, kern_version):
         func_str_b64 = base64.b64encode(func_str)
         cmd = "BPF_PROG_LOAD {} {} {} {} {}".format(prog_type, len(func_str),

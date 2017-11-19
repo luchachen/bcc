@@ -748,6 +748,13 @@ class BPF(object):
 
         fn = self.load_func(fn_name, BPF.TRACEPOINT)
         (tp_category, tp_name) = tp.split(':')
+        if self.libremote:
+            # TODO Add failure mode, and support for perf-reader
+            self.libremote.bpf_attach_tracepoint(fn.remotefd,
+                tp_category, tp_name, pid, cpu, group_fd)
+            self.open_tracepoints[tp] = None
+            return self
+
         res = lib.bpf_attach_tracepoint(fn.fd, tp_category.encode("ascii"),
                 tp_name.encode("ascii"), self._reader_cb_impl,
                 ct.cast(id(self), ct.py_object))
@@ -1183,7 +1190,8 @@ class BPF(object):
             lib.bpf_detach_uprobe(str(k).encode("ascii"))
             self._del_uprobe(k)
         for k, v in self.open_tracepoints.items():
-            lib.perf_reader_free(v)
+            if v:
+                lib.perf_reader_free(v)
             (tp_category, tp_name) = k.split(':')
             lib.bpf_detach_tracepoint(tp_category.encode("ascii"),
                     tp_name.encode("ascii"))
