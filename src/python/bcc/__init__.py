@@ -566,6 +566,16 @@ class BPF(object):
         self._check_probe_quota(1)
         fn = self.load_func(fn_name, BPF.KPROBE)
         ev_name = "p_" + event.replace("+", "_").replace(".", "_")
+
+        # TODO: Add support for remote cbs
+        if self.libremote:
+            res = self.libremote.bpf_attach_kprobe(fn.remotefd, 0,
+                ev_name, event, pid, cpu, group_fd)
+            if res < 0:
+                raise Exception("Failed to attach BPF to kprobe")
+            self._add_kprobe(ev_name, None)
+            return self
+
         res = lib.bpf_attach_kprobe(fn.fd, 0, ev_name.encode("ascii"),
                 event.encode("ascii"), self._reader_cb_impl,
                 ct.cast(id(self), ct.py_object))
@@ -601,6 +611,16 @@ class BPF(object):
         self._check_probe_quota(1)
         fn = self.load_func(fn_name, BPF.KPROBE)
         ev_name = "r_" + event.replace("+", "_").replace(".", "_")
+
+        # TODO: Add support for remote cbs
+        if self.libremote:
+            res = self.libremote.bpf_attach_kprobe(fn.remotefd, 1,
+                ev_name, event, pid, cpu, group_fd)
+            if res < 0:
+                raise Exception("Failed to attach BPF to kprobe")
+            self._add_kprobe(ev_name, None)
+            return self
+
         res = lib.bpf_attach_kprobe(fn.fd, 1, ev_name.encode("ascii"),
                 event.encode("ascii"), self._reader_cb_impl,
                 ct.cast(id(self), ct.py_object))
@@ -751,6 +771,8 @@ class BPF(object):
 
         fn = self.load_func(fn_name, BPF.TRACEPOINT)
         (tp_category, tp_name) = tp.split(':')
+
+        # TODO: Add support for remote cbs
         if self.libremote:
             res = self.libremote.bpf_attach_tracepoint(fn.remotefd,
                 tp_category, tp_name, pid, cpu, group_fd)
