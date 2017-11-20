@@ -31,49 +31,71 @@ class LibRemote(object):
         # Create the remote connection
         self.remote = cls(remote_arg)
 
+    def _remote_send_command(self, cmd):
+        """
+        Return: a tuple containing return code and output list.
+        """
+        ret = self.remote.send_command(cmd)
+        if not ret:
+            return (-1, [])
+
+        if ret[0].startswith('Command not recognized'):
+            print('Command not recognized! cmd: {}'.format(cmd))
+            return (-1, [])
+
+        # Assume success if first list element doesn't have ret=
+        if not 'ret=' in ret[0]:
+            return (0, ret)
+
+        m = re.search("ret=(\d+)", ret[0])
+        if m == None:
+            print('Bad return string for cmd {}'.format(cmd))
+            return (-1, [])
+
+        return (int(m.group(1)), ret)
+
     def available_filter_functions(self, tracefs):
         cmd = "GET_AVAIL_FILTER_FUNCS {}".format(tracefs)
-        return self.remote.send_command(cmd)
+        ret = self._remote_send_command(cmd)
+        return ret[0] if ret[0] < 0 else ret[1]
 
     def kprobes_blacklist(self, tracefs):
         cmd = "GET_KPROBES_BLACKLIST {}".format(tracefs)
-        return self.remote.send_command(cmd)
+        ret = self._remote_send_command(cmd)
+        return ret[0] if ret[0] < 0 else ret[1]
 
     def get_trace_events(self, tracefs, cat):
         cmd = "GET_TRACE_EVENTS {} {}".format(tracefs, cat)
-        return self.remote.send_command(cmd)
+        ret = self._remote_send_command(cmd)
+        return ret[0] if ret[0] < 0 else ret[1]
 
     def get_trace_events_categories(self, tracefs):
         cmd = "GET_TRACE_EVENTS_CATEGORIES {}".format(tracefs)
-        return self.remote.send_command(cmd)
+        ret = self._remote_send_command(cmd)
+        return ret[0] if ret[0] < 0 else ret[1]
 
     def bpf_attach_tracepoint(self, fd, cat, tpname, pid, cpu, gfd):
         cmd = "BPF_ATTACH_TRACEPOINT {} {} {} {} {} {}".format(fd,
             cat, tpname, pid, cpu, gfd)
-        return self.remote.send_command(cmd)
+        ret = self._remote_send_command(cmd)
+        return ret[0]
 
     def bpf_prog_load(self, prog_type, func_str, license_str, kern_version):
         func_str_b64 = base64.b64encode(func_str)
         cmd = "BPF_PROG_LOAD {} {} {} {} {}".format(prog_type, len(func_str),
               license_str, kern_version, base64.b64encode(func_str))
-        ret = self.remote.send_command(cmd)
-        if not ret:
-            return -1
-
-        m = re.search("ret=(\d+)", ret[0])
-        if m == None:
-            return -1
-
-        return int(m.group(1))
+        ret = self._remote_send_command(cmd)
+        return ret[0]
 
     def bpf_create_map(self, map_type, key_size, leaf_size, max_entries,
                        flags):
         cmd = "BPF_CREATE_MAP {} {} {} {} {}".format(map_type, key_size,
                                     leaf_size, max_entries, flags)
-        return self.remote.send_command(cmd)
+        ret = self._remote_send_command(cmd)
+        return ret[0]
 
     def close_connection(self):
-        self.remote.send_command("exit")
+        self._remote_send_command("exit")
         self.remote.close_connection()
 
 # Test
