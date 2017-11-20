@@ -752,9 +752,10 @@ class BPF(object):
         fn = self.load_func(fn_name, BPF.TRACEPOINT)
         (tp_category, tp_name) = tp.split(':')
         if self.libremote:
-            # TODO Add failure mode, and support for perf-reader
-            self.libremote.bpf_attach_tracepoint(fn.remotefd,
+            res = self.libremote.bpf_attach_tracepoint(fn.remotefd,
                 tp_category, tp_name, pid, cpu, group_fd)
+            if res < 0:
+                raise Exception("Failed to attach BPF to tracepoint")
             self.open_tracepoints[tp] = None
             return self
 

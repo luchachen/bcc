@@ -39,7 +39,7 @@ class ShellRemote(base.BccRemote):
         try:
             c.expect('END_BPFD_OUTPUT')
         except pe.exceptions.EOF:
-            return ''
+            return 'Command not recognized (timeout)'
 
         ret = c.before.split('\n')
 
