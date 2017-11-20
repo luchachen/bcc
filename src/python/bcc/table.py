@@ -144,6 +144,8 @@ def Table(bpf, map_id, map_fd, keytype, leaftype, **kwargs):
         t = LruPerCpuHash(bpf, map_id, map_fd, keytype, leaftype)
     if t == None:
         raise Exception("Unknown table type %d" % ttype)
+    if 'libremote' in kwargs:
+        t.libremote = kwargs['libremote']
     return t
 
 
@@ -158,6 +160,7 @@ class TableBase(MutableMapping):
         self.ttype = lib.bpf_table_type_id(self.bpf.module, self.map_id)
         self.flags = lib.bpf_table_flags_id(self.bpf.module, self.map_id)
         self._cbs = {}
+        self.libremote = None
 
     def key_sprintf(self, key):
         buf = ct.create_string_buffer(ct.sizeof(self.Key) * 8)
