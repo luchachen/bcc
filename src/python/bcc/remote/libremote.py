@@ -80,6 +80,12 @@ class LibRemote(object):
         ret = self._remote_send_command(cmd)
         return ret[0]
 
+    def bpf_attach_kprobe(self, fd, t, evname, fnname, pid, cpu, gfd):
+        cmd = "BPF_ATTACH_KPROBE {} {} {} {} {} {} {}".format(fd, t,
+            evname, fnname, pid, cpu, gfd)
+        ret = self._remote_send_command(cmd)
+        return ret[0]
+
     def bpf_prog_load(self, prog_type, func_str, license_str, kern_version):
         func_str_b64 = base64.b64encode(func_str)
         cmd = "BPF_PROG_LOAD {} {} {} {} {}".format(prog_type, len(func_str),
