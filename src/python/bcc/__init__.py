@@ -461,7 +461,8 @@ class BPF(object):
             if not leaf_desc:
                 raise Exception("Failed to load BPF Table %s leaf desc" % name)
             leaftype = BPF._decode_table_type(json.loads(leaf_desc.decode()))
-        return Table(self, map_id, map_fd, keytype, leaftype, reducer=reducer)
+        return Table(self, map_id, map_fd, keytype, leaftype, reducer=reducer,
+                        libremote=self.libremote)
 
     def __getitem__(self, key):
         if key not in self.tables:
