@@ -100,6 +100,11 @@ class LibRemote(object):
         ret = self._remote_send_command(cmd)
         return ret[0]
 
+    def bpf_open_perf_buffer(self, pid, cpu, page_cnt):
+        cmd = "BPF_OPEN_PERF_BUFFER {} {} {}".format(pid, cpu, page_cnt)
+        ret = self._remote_send_command(cmd)
+        return ret[0]
+
     def close_connection(self):
         self._remote_send_command("exit")
         self.remote.close_connection()

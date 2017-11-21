@@ -528,12 +528,25 @@ class PerfEventArray(ArrayBase):
     def _open_perf_buffer(self, cpu, callback, page_cnt, lost_cb):
         fn = _RAW_CB_TYPE(lambda _, data, size: callback(cpu, data, size))
         lost_fn = _LOST_CB_TYPE(lambda lost: lost_cb(lost)) if lost_cb else ct.cast(None, _LOST_CB_TYPE)
-        reader = lib.bpf_open_perf_buffer(fn, lost_fn, None, -1, cpu, page_cnt)
-        if not reader:
-            raise Exception("Could not open perf buffer")
-        fd = lib.perf_reader_fd(reader)
+
+        if self.libremote:
+            # fn and lost_fn are already tracked by self._cbs below so no need to pass
+            fd = self.libremote.bpf_open_perf_buffer(-1, cpu, page_cnt)
+            if fd < 0:
+                raise Exception("Could not open perf buffer")
+        else:
+            reader = lib.bpf_open_perf_buffer(fn, lost_fn, None, -1, cpu, page_cnt)
+            if not reader:
+                raise Exception("Could not open perf buffer")
+            fd = lib.perf_reader_fd(reader)
+
         self[self.Key(cpu)] = self.Leaf(fd)
-        self.bpf._add_kprobe((id(self), cpu), reader)
+
+        if self.libremote:
+            self.bpf._add_kprobe((id(self), cpu), fd)
+        else:
+            self.bpf._add_kprobe((id(self), cpu), reader)
+
         # keep a refcnt
         self._cbs[cpu] = (fn, lost_fn)
         # The actual fd is held by the perf reader, add to track opened keys
