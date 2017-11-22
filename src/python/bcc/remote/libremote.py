@@ -100,6 +100,17 @@ class LibRemote(object):
         ret = self._remote_send_command(cmd)
         return ret[0]
 
+    def bpf_update_elem(self, map_fd, kstr, klen, lstr, llen, flags):
+        cmd = "BPF_UPDATE_ELEM {} {} {} {} {} {}".format(map_fd, kstr, klen,
+                                                         lstr, llen, flags)
+        ret = self._remote_send_command(cmd)
+        return ret[0]
+
+    def bpf_lookup_elem(self, map_fd, kstr, klen, llen):
+        cmd = "BPF_LOOKUP_ELEM {} {} {} {}".format(map_fd, kstr, klen, llen)
+        ret = self._remote_send_command(cmd)
+        return ret[0] if ret[0] < 0 else ret[1]
+
     def bpf_open_perf_buffer(self, pid, cpu, page_cnt):
         cmd = "BPF_OPEN_PERF_BUFFER {} {} {}".format(pid, cpu, page_cnt)
         ret = self._remote_send_command(cmd)

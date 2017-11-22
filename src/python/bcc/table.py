@@ -18,6 +18,7 @@ from functools import reduce
 import multiprocessing
 import os
 import errno
+import base64
 
 from .libbcc import lib, _RAW_CB_TYPE, _LOST_CB_TYPE
 from .perf import Perf
@@ -196,12 +197,40 @@ class TableBase(MutableMapping):
 
     def __getitem__(self, key):
         leaf = self.Leaf()
+        leaf_p = ct.pointer(leaf)
+
+        if self.libremote:
+            klen = ct.sizeof(key)
+            llen = ct.sizeof(leaf)
+            kstr = base64.b64encode(ct.string_at(ct.cast(key_p, ct.c_void_p), klen))
+
+            lstr = self.libremote.bpf_lookup_elem(self.map_fd, kstr, klen, llen)
+            if type(lstr) != str:
+                raise KeyError("bpf lookup failed, returned {}".format(lstr))
+
+            lbin_p = ct.c_char_p(base64.b64decode(lstr))
+            ct.memmove(leaf_p, lbin_p, llen)
+            return
+
         res = lib.bpf_lookup_elem(self.map_fd, ct.byref(key), ct.byref(leaf))
         if res < 0:
             raise KeyError
         return leaf
 
     def __setitem__(self, key, leaf):
+        key_p = ct.pointer(key)
+        leaf_p = ct.pointer(leaf)
+
+        if self.libremote:
+            klen = ct.sizeof(key)
+            llen = ct.sizeof(leaf)
+            kstr = base64.b64encode(ct.string_at(ct.cast(key_p, ct.c_void_p), klen))
+            lstr = base64.b64encode(ct.string_at(ct.cast(leaf_p, ct.c_void_p), llen))
+
+            if self.libremote.bpf_update_elem(self.map_fd, kstr, klen, lstr, llen, 0) < 0:
+                raise Exception("Could not update table")
+            return
+
         res = lib.bpf_update_elem(self.map_fd, ct.byref(key), ct.byref(leaf),
                                   0)
         if res < 0:
