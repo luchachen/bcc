@@ -1195,9 +1195,25 @@ class BPF(object):
         cb() that was given in the BPF constructor for each entry.
         """
         try:
+            if self.libremote:
+                fd_callbacks = []
+                for k, v in self.open_kprobes.iteritems():
+                    # Only support polling for per-cpu perf buffer kprobes
+                    # { (PerfEventArray-Obj, cpu) -> fd }
+                    if v and type(k) == tuple:
+                        t_id = k[0]
+                        t_obj = ct.cast(t_id, ct.py_object).value
+                        cpu = k[1]
+                        cbs = t_obj._cbs[cpu]
+                        fd_callbacks.append((v, cbs))
+                if fd_callbacks:
+                    self.libremote.perf_reader_poll(fd_callbacks)
+                return
+
             readers = (ct.c_void_p * len(self.open_kprobes))()
             for i, v in enumerate(self.open_kprobes.values()):
                 readers[i] = v
+
             lib.perf_reader_poll(len(self.open_kprobes), readers, timeout)
         except KeyboardInterrupt:
             exit()
