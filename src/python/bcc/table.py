@@ -304,14 +304,36 @@ class TableBase(MutableMapping):
         next_key_p = ct.pointer(next_key)
 
         if key is None:
-            res = lib.bpf_get_first_key(self.map_fd,
-                    ct.cast(next_key_p, ct.c_void_p),
-                    ct.sizeof(self.Key))
+            if self.libremote:
+                size = ct.sizeof(self.Key)
+                ret = self.libremote.bpf_get_first_key(self.map_fd, size)
+                if ret[0] < 0:
+                    raise StopIteration()
+                key_str = ret[1][0]
+                key_p = ct.c_char_p(base64.b64decode(key_str))
+                ct.memmove(next_key_p, key_p, size)
+                res = ret[0]
+            else:
+                res = lib.bpf_get_first_key(self.map_fd,
+                        ct.cast(next_key_p, ct.c_void_p),
+                        ct.sizeof(self.Key))
         else:
             key_p = ct.pointer(key)
-            res = lib.bpf_get_next_key(self.map_fd,
-                    ct.cast(key_p, ct.c_void_p),
-                    ct.cast(next_key_p, ct.c_void_p))
+            if self.libremote:
+                klen = ct.sizeof(self.Key)
+                kstr = base64.b64encode(ct.string_at(ct.cast(key_p,
+                                        ct.c_void_p), klen))
+                ret = self.libremote.bpf_get_next_key(self.map_fd, kstr, klen)
+                if ret[0] < 0:
+                    raise StopIteration()
+                ret_key_str = ret[1][0]
+                ret_key_p = ct.c_char_p(base64.b64decode(ret_key_str))
+                ct.memmove(next_key_p, ret_key_p, klen)
+                res = ret[0]
+            else:
+                res = lib.bpf_get_next_key(self.map_fd,
+                        ct.cast(key_p, ct.c_void_p),
+                        ct.cast(next_key_p, ct.c_void_p))
 
         if res < 0:
             raise StopIteration()

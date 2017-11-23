@@ -117,6 +117,16 @@ class LibRemote(object):
         ret = self._remote_send_command(cmd)
         return ret[0]
 
+    def bpf_get_first_key(self, map_fd, size):
+        cmd = "BPF_GET_FIRST_KEY {} {}".format(map_fd, size)
+        ret = self._remote_send_command(cmd)
+        return ret
+
+    def bpf_get_next_key(self, map_fd, kstr, klen):
+        cmd = "BPF_GET_NEXT_KEY {} {} {}".format(map_fd, kstr, klen)
+        ret = self._remote_send_command(cmd)
+        return ret
+
     def perf_reader_poll(self, fd_callbacks, timeout):
         cmd = ""
         fd_cb_dict = {}
