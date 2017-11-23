@@ -1207,7 +1207,7 @@ class BPF(object):
                         cbs = t_obj._cbs[cpu]
                         fd_callbacks.append((v, cbs))
                 if fd_callbacks:
-                    self.libremote.perf_reader_poll(fd_callbacks)
+                    self.libremote.perf_reader_poll(fd_callbacks, timeout)
                 return
 
             readers = (ct.c_void_p * len(self.open_kprobes))()

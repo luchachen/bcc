@@ -16,6 +16,7 @@
 import sys
 import base64
 import re
+import ctypes as ct
 from shell import ShellRemote
 
 def get_remote_cls(cls_name):
@@ -115,6 +116,33 @@ class LibRemote(object):
         cmd = "BPF_OPEN_PERF_BUFFER {} {} {}".format(pid, cpu, page_cnt)
         ret = self._remote_send_command(cmd)
         return ret[0]
+
+    def perf_reader_poll(self, fd_callbacks, timeout):
+        cmd = ""
+        fd_cb_dict = {}
+        for f in fd_callbacks:
+            cmd += " {}".format(f[0])
+            fd_cb_dict[f[0]] = f[1]
+        cmd = "PERF_READER_POLL {} {}".format(timeout, len(fd_callbacks)) + cmd
+        ret = self._remote_send_command(cmd)
+        if ret[0] < 0:
+            return ret[0]
+
+        for out in ret[1]:
+            # Format: <fd> <len> <base64 data>
+            (fd, size, data_str) = out.split(" ")
+            fd = int(fd)
+            size = int(size)
+
+            data_bin = ct.c_char_p(base64.b64decode(data_str))
+            data_bin = ct.cast(data_bin, ct.c_void_p)
+            cbs = fd_cb_dict[fd]
+
+            raw_cb = cbs[0]
+            lost_cb = cbs[1]
+
+            # TODO: implement lost cbs too
+            raw_cb(ct.cast(id(self), ct.py_object), data_bin, ct.c_int(size))
 
     def close_connection(self):
         self._remote_send_command("exit")
