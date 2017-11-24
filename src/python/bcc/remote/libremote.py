@@ -48,7 +48,7 @@ class LibRemote(object):
         if not 'ret=' in ret[0]:
             return (0, ret)
 
-        m = re.search("ret=(\d+)", ret[0])
+        m = re.search("ret=(\-?\d+)", ret[0])
         if m == None:
             print('Bad return string for cmd {}'.format(cmd))
             return (-1, [])
@@ -110,7 +110,7 @@ class LibRemote(object):
     def bpf_lookup_elem(self, map_fd, kstr, klen, llen):
         cmd = "BPF_LOOKUP_ELEM {} {} {} {}".format(map_fd, kstr, klen, llen)
         ret = self._remote_send_command(cmd)
-        return ret[0] if ret[0] < 0 else ret[1]
+        return ret
 
     def bpf_open_perf_buffer(self, pid, cpu, page_cnt):
         cmd = "BPF_OPEN_PERF_BUFFER {} {} {}".format(pid, cpu, page_cnt)

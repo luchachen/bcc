@@ -200,17 +200,18 @@ class TableBase(MutableMapping):
         leaf_p = ct.pointer(leaf)
 
         if self.libremote:
-            klen = ct.sizeof(key)
-            llen = ct.sizeof(leaf)
+            klen = ct.sizeof(self.Key)
+            llen = ct.sizeof(self.Leaf)
             kstr = base64.b64encode(ct.string_at(ct.cast(key_p, ct.c_void_p), klen))
 
-            lstr = self.libremote.bpf_lookup_elem(self.map_fd, kstr, klen, llen)
-            if type(lstr) != str:
+            (ret, lstr) = self.libremote.bpf_lookup_elem(self.map_fd, kstr, klen, llen)
+            if ret < 0:
                 raise KeyError("bpf lookup failed, returned {}".format(lstr))
+            lstr = lstr[0]
 
             lbin_p = ct.c_char_p(base64.b64decode(lstr))
             ct.memmove(leaf_p, lbin_p, llen)
-            return
+            return leaf
 
         res = lib.bpf_lookup_elem(self.map_fd, ct.byref(key), ct.byref(leaf))
         if res < 0:
