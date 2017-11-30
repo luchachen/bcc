@@ -24,7 +24,7 @@
 extern "C" {
 #endif
 
-typedef void (*bpf_create_map_cb_t)(void *cb_cookie, void *data);
+typedef int (*bpf_create_map_cb_t)(void *cb_cookie, void *data);
 struct bpf_create_map_args {
 	unsigned int type;
 	unsigned int key_size;

@@ -488,10 +488,11 @@ class BPF(object):
 
     def _bpf_remote_create_map_cb(self, data):
         if not self.libremote:
-            return
+            return -1
         args = ct.cast(data, ct.POINTER(BpfCreateMapArgs)).contents
-        self.libremote.bpf_create_map(args.type, args.key_size, args.value_size,
+        ret = self.libremote.bpf_create_map(args.type, args.key_size, args.value_size,
                         args.max_entries, args. map_flags)
+        return ret
 
     @staticmethod
     def attach_raw_socket(fn, dev):
