@@ -735,10 +735,9 @@ bool BTypeVisitor::VisitVarDecl(VarDecl *Decl) {
         args.max_entries = table.max_entries;
         args.map_flags = table.flags;
 
+        /* TODO: Get return value and store in table.fd */
         bpf_create_map_cb(bpf_create_map_cookie, &args);
       }
-
-      printf("From C: BPF_CREATE_MAP %d %d %d %d %d\n", map_type, table.key_size, table.leaf_size, table.max_entries, table.flags);
 
       table.type = map_type;
       table.fd = bpf_create_map(map_type, table.key_size, table.leaf_size, table.max_entries, table.flags);
