@@ -197,12 +197,10 @@ class BPF(object):
     Table = Table
 
     class Function(object):
-        def __init__(self, bpf, name, fd, remotefd=-1):
+        def __init__(self, bpf, name, fd):
             self.bpf = bpf
             self.name = name
             self.fd = fd
-            # Temporary for testing, remotes will use self.fd later
-            self.remotefd = remotefd
 
     @staticmethod
     def _find_file(filename):
@@ -349,11 +347,11 @@ class BPF(object):
         if self.libremote:
             remotefd = self.libremote.bpf_prog_load(prog_type, func_str, license_str,
                                       kern_version)
-        else:
-            remotefd = -1
+            if remotefd < 0:
+                raise Exception('Failed to load BPF program from remote')
 
         buffer_len = LOG_BUFFER_SIZE
-        while True:
+        while True and not self.libremote:
             log_buf = ct.create_string_buffer(buffer_len) if self.debug else None
             fd = lib.bpf_prog_load(prog_type,
                     lib.bpf_function_start(self.module, func_name.encode("ascii")),
@@ -366,10 +364,10 @@ class BPF(object):
             else:
                 break
 
-        if self.debug & DEBUG_BPF and log_buf.value:
+        if self.debug & DEBUG_BPF and log_buf.value and not self.libremote:
             print(log_buf.value.decode(), file=sys.stderr)
 
-        if fd < 0:
+        if not self.libremote and fd < 0:
             atexit.register(self.donothing)
             if ct.get_errno() == errno.EPERM:
                 raise Exception("Need super-user privilges to run")
@@ -378,7 +376,10 @@ class BPF(object):
             raise Exception("Failed to load BPF program %s: %s" %
                             (func_name, errstr))
 
-        fn = BPF.Function(self, func_name, fd, remotefd)
+        if self.libremote:
+            fd = remotefd
+
+        fn = BPF.Function(self, func_name, fd)
         self.funcs[func_name] = fn
 
         return fn
@@ -568,7 +569,7 @@ class BPF(object):
 
         # TODO: Add support for remote cbs
         if self.libremote:
-            res = self.libremote.bpf_attach_kprobe(fn.remotefd, 0,
+            res = self.libremote.bpf_attach_kprobe(fn.fd, 0,
                 ev_name, event, pid, cpu, group_fd)
             if res < 0:
                 raise Exception("Failed to attach BPF to kprobe")
@@ -615,7 +616,7 @@ class BPF(object):
 
         # TODO: Add support for remote cbs
         if self.libremote:
-            res = self.libremote.bpf_attach_kprobe(fn.remotefd, 1,
+            res = self.libremote.bpf_attach_kprobe(fn.fd, 1,
                 ev_name, event, pid, cpu, group_fd)
             if res < 0:
                 raise Exception("Failed to attach BPF to kprobe")
@@ -779,7 +780,7 @@ class BPF(object):
 
         # TODO: Add support for remote cbs
         if self.libremote:
-            res = self.libremote.bpf_attach_tracepoint(fn.remotefd,
+            res = self.libremote.bpf_attach_tracepoint(fn.fd,
                 tp_category, tp_name, pid, cpu, group_fd)
             if res < 0:
                 raise Exception("Failed to attach BPF to tracepoint")

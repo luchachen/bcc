@@ -778,7 +778,14 @@ class StackTrace(TableBase):
 
     def __delitem__(self, key):
         key_p = ct.pointer(key)
-        res = lib.bpf_delete_elem(self.map_fd, ct.cast(key_p, ct.c_void_p))
+
+        if self.libremote:
+            klen = ct.sizeof(self.Key)
+            kstr = base64.b64encode(ct.string_at(ct.cast(key_p, ct.c_void_p), klen))
+            res = self.libremote.bpf_delete_elem(self.map_fd, kstr, klen)
+        else:
+            res = lib.bpf_delete_elem(self.map_fd, ct.cast(key_p, ct.c_void_p))
+
         if res < 0:
             raise KeyError
 

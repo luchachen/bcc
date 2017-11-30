@@ -127,6 +127,11 @@ class LibRemote(object):
         ret = self._remote_send_command(cmd)
         return ret
 
+    def bpf_delete_elem(self, map_fd, kstr, klen):
+        cmd = "BPF_DELETE_ELEM {} {} {}".format(map_fd, kstr, klen)
+        ret = self._remote_send_command(cmd)
+        return ret[0]
+
     def perf_reader_poll(self, fd_callbacks, timeout):
         cmd = ""
         fd_cb_dict = {}
