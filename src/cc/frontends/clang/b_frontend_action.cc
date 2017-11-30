@@ -767,9 +767,11 @@ bool BTypeVisitor::VisitVarDecl(VarDecl *Decl) {
         return false;
       }
 
+      int ret = -1;
       if (bpf_create_map_cb) {
         struct bpf_create_map_args args;
 
+        // TODO: Add support for table.name.c_str(), libbpf on bpfd side needs to be updated accordingly
         args.type = map_type;
         args.key_size = table.key_size;
         args.value_size = table.leaf_size;
@@ -777,11 +779,15 @@ bool BTypeVisitor::VisitVarDecl(VarDecl *Decl) {
         args.map_flags = table.flags;
 
         /* TODO: Get return value and store in table.fd */
-        bpf_create_map_cb(bpf_create_map_cookie, &args);
+        ret = bpf_create_map_cb(bpf_create_map_cookie, &args);
       }
 
       table.type = map_type;
-      table.fd = bpf_create_map(map_type, table.name.c_str(),
+
+      if (ret > 0)
+          table.fd = ret;
+      else
+          table.fd = bpf_create_map(map_type, table.name.c_str(),
                                 table.key_size, table.leaf_size,
                                 table.max_entries, table.flags);
     }
