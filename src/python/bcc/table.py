@@ -448,7 +448,15 @@ class HashTable(TableBase):
         return i
 
     def __delitem__(self, key):
-        res = lib.bpf_delete_elem(self.map_fd, ct.byref(key))
+        key_p = ct.pointer(key)
+
+        if self.libremote:
+            klen = ct.sizeof(self.Key)
+            kstr = base64.b64encode(ct.string_at(ct.cast(key_p, ct.c_void_p), klen))
+            res = self.libremote.bpf_delete_elem(self.map_fd, kstr, klen)
+        else:
+            res = lib.bpf_delete_elem(self.map_fd, ct.byref(key))
+
         if res < 0:
             raise KeyError
 
@@ -531,7 +539,15 @@ class ProgArray(ArrayBase):
 
     def __delitem__(self, key):
         key = self._normalize_key(key)
-        res = lib.bpf_delete_elem(self.map_fd, ct.byref(key))
+        key_p = ct.pointer(key)
+
+        if self.libremote:
+            klen = ct.sizeof(self.Key)
+            kstr = base64.b64encode(ct.string_at(ct.cast(key_p, ct.c_void_p), klen))
+            res = self.libremote.bpf_delete_elem(self.map_fd, kstr, klen)
+        else:
+            res = lib.bpf_delete_elem(self.map_fd, ct.byref(key))
+
         if res < 0:
             raise Exception("Could not delete item")
 
@@ -551,7 +567,15 @@ class PerfEventArray(ArrayBase):
             return
         # Delete entry from the array
         c_key = self._normalize_key(key)
-        lib.bpf_delete_elem(self.map_fd, ct.byref(c_key))
+        key_p = ct.pointer(c_key)
+
+        if self.libremote:
+            klen = ct.sizeof(self.Key)
+            kstr = base64.b64encode(ct.string_at(ct.cast(key_p, ct.c_void_p), klen))
+            self.libremote.bpf_delete_elem(self.map_fd, kstr, klen)
+        else:
+            lib.bpf_delete_elem(self.map_fd, ct.byref(c_key))
+
         key_id = (id(self), key)
         if key_id in self.bpf.open_kprobes:
             # The key is opened for perf ring buffer
