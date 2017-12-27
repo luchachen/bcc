@@ -18,6 +18,7 @@ import base64
 import re
 import ctypes as ct
 from shell import ShellRemote
+from adb import AdbRemote
 
 def get_remote_cls(cls_name):
     cls_name = cls_name.capitalize() + 'Remote'
