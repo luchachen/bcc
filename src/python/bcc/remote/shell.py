@@ -29,6 +29,7 @@ class ShellRemote(base.BccRemote):
             cmd = 'bpfd'
 
         self.client = pe.spawn(cmd)
+        self.client.expect('STARTED_BPFD')
 
     def send_command(self, cmd):
         # For debugging
