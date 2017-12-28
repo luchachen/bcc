@@ -590,8 +590,12 @@ class BPF(object):
         ev_name = "p_" + event.replace("+", "_").replace(".", "_")
         if ev_name not in self.open_kprobes:
             raise Exception("Kprobe %s is not attached" % event)
-        lib.perf_reader_free(self.open_kprobes[ev_name])
-        res = lib.bpf_detach_kprobe(ev_name.encode("ascii"))
+
+        if self.libremote:
+            res = self.libremote.bpf_detach_kprobe(ev_name)
+        else:
+            lib.perf_reader_free(self.open_kprobes[ev_name])
+            res = lib.bpf_detach_kprobe(ev_name.encode("ascii"))
         if res < 0:
             raise Exception("Failed to detach BPF from kprobe")
         self._del_kprobe(ev_name)
@@ -637,8 +641,13 @@ class BPF(object):
         ev_name = "r_" + event.replace("+", "_").replace(".", "_")
         if ev_name not in self.open_kprobes:
             raise Exception("Kretprobe %s is not attached" % event)
-        lib.perf_reader_free(self.open_kprobes[ev_name])
-        res = lib.bpf_detach_kprobe(ev_name.encode("ascii"))
+
+        if self.libremote:
+            res = self.libremote.bpf_detach_kprobe(ev_name)
+        else:
+            lib.perf_reader_free(self.open_kprobes[ev_name])
+            res = lib.bpf_detach_kprobe(ev_name.encode("ascii"))
+
         if res < 0:
             raise Exception("Failed to detach BPF from kprobe")
         self._del_kprobe(ev_name)
@@ -1227,8 +1236,11 @@ class BPF(object):
         for k, v in list(self.open_kprobes.items()):
             # non-string keys here include the perf_events reader
             if isinstance(k, str):
-                lib.perf_reader_free(v)
-                lib.bpf_detach_kprobe(str(k).encode("ascii"))
+                if self.libremote:
+                    res = self.libremote.bpf_detach_kprobe(k)
+                else:
+                    lib.perf_reader_free(v)
+                    lib.bpf_detach_kprobe(str(k).encode("ascii"))
                 self._del_kprobe(k)
         # clean up opened perf ring buffer and perf events
         table_keys = list(self.tables.keys())
