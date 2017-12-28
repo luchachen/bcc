@@ -543,7 +543,37 @@ struct pt_regs;
 int bpf_usdt_readarg(int argc, struct pt_regs *ctx, void *arg) asm("llvm.bpf.extra");
 int bpf_usdt_readarg_p(int argc, struct pt_regs *ctx, void *buf, u64 len) asm("llvm.bpf.extra");
 
-#ifdef __powerpc__
+/* Scan the ARCH passed in from ARCH env variable (see Makefile) */
+#if defined(__TARGET_ARCH_x86)
+#define bpf_target_x86
+#define bpf_target_defined
+#elif defined(__TARGET_ARCH_s930x)
+#define bpf_target_s930x
+#define bpf_target_defined
+#elif defined(__TARGET_ARCH_arm64)
+#define bpf_target_arm64
+#define bpf_target_defined
+#elif defined(__TARGET_ARCH_powerpc)
+#define bpf_target_powerpc
+#define bpf_target_defined
+#else
+#undef bpf_target_defined
+#endif
+
+/* Fall back to what the compiler says */
+#ifndef bpf_target_defined
+#if defined(__x86_64__)
+#define bpf_target_x86
+#elif defined(__s390x__)
+#define bpf_target_s930x
+#elif defined(__aarch64__)
+#define bpf_target_arm64
+#elif defined(__powerpc__)
+#define bpf_target_powerpc
+#endif
+#endif
+
+#ifdef bpf_target_powerpc
 #define PT_REGS_PARM1(ctx)	((ctx)->gpr[3])
 #define PT_REGS_PARM2(ctx)	((ctx)->gpr[4])
 #define PT_REGS_PARM3(ctx)	((ctx)->gpr[5])
@@ -553,29 +583,29 @@ int bpf_usdt_readarg_p(int argc, struct pt_regs *ctx, void *buf, u64 len) asm("l
 #define PT_REGS_RC(ctx)		((ctx)->gpr[3])
 #define PT_REGS_IP(ctx)		((ctx)->nip)
 #define PT_REGS_SP(ctx)		((ctx)->gpr[1])
-#elif defined(__s390x__)
+#elif bpf_target_s930x
 #define PT_REGS_PARM1(x) ((x)->gprs[2])
 #define PT_REGS_PARM2(x) ((x)->gprs[3])
 #define PT_REGS_PARM3(x) ((x)->gprs[4])
 #define PT_REGS_PARM4(x) ((x)->gprs[5])
 #define PT_REGS_PARM5(x) ((x)->gprs[6])
 #define PT_REGS_RET(x) ((x)->gprs[14])
-#define PT_REGS_FP(x) ((x)->gprs[11]) /* Works only with CONFIG_FRAME_POINTER */
+#define PT_REGS_FP(x) ((x)->gprs[11])
 #define PT_REGS_RC(x) ((x)->gprs[2])
 #define PT_REGS_SP(x) ((x)->gprs[15])
 #define PT_REGS_IP(x) ((x)->psw.addr)
-#elif defined(__x86_64__)
+#elif bpf_target_x86
 #define PT_REGS_PARM1(ctx)	((ctx)->di)
 #define PT_REGS_PARM2(ctx)	((ctx)->si)
 #define PT_REGS_PARM3(ctx)	((ctx)->dx)
 #define PT_REGS_PARM4(ctx)	((ctx)->cx)
 #define PT_REGS_PARM5(ctx)	((ctx)->r8)
 #define PT_REGS_PARM6(ctx)	((ctx)->r9)
-#define PT_REGS_FP(ctx)         ((ctx)->bp) /* Works only with CONFIG_FRAME_POINTER */
+#define PT_REGS_FP(ctx)         ((ctx)->bp)
 #define PT_REGS_RC(ctx)		((ctx)->ax)
 #define PT_REGS_IP(ctx)		((ctx)->ip)
 #define PT_REGS_SP(ctx)		((ctx)->sp)
-#elif defined(__aarch64__)
+#elif bpf_target_arm64
 #define PT_REGS_PARM1(x)	((x)->regs[0])
 #define PT_REGS_PARM2(x)	((x)->regs[1])
 #define PT_REGS_PARM3(x)	((x)->regs[2])
@@ -587,6 +617,7 @@ int bpf_usdt_readarg_p(int argc, struct pt_regs *ctx, void *buf, u64 len) asm("l
 #define PT_REGS_RC(x)		((x)->regs[0])
 #define PT_REGS_SP(x)		((x)->sp)
 #define PT_REGS_IP(x)		((x)->pc)
+
 #else
 #error "bcc does not support this platform yet"
 #endif
