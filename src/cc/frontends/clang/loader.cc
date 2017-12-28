@@ -20,6 +20,7 @@
 #include <fcntl.h>
 #include <ftw.h>
 #include <map>
+#include <iostream>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string>
@@ -113,11 +114,12 @@ int ClangLoader::parse(unique_ptr<llvm::Module> *mod, TableStorage &ts, const st
   unique_ptr<llvm::MemoryBuffer> main_buf;
   struct utsname un;
   uname(&un);
-  string kdir = string(KERNEL_MODULES_DIR) + "/" + un.release;
-  auto kernel_path_info = get_kernel_path_info (kdir);
+  string kdir = string("/home/joel/sdb/hikey-kernel");
+  printf("KERNEL dir: %s\n", kdir.c_str());
+  // auto kernel_path_info = get_kernel_path_info (kdir);
 
   // clang needs to run inside the kernel dir
-  DirStack dstack(kdir + "/" + kernel_path_info.second);
+  DirStack dstack(kdir);
   if (!dstack.ok())
     return -1;
 
@@ -148,7 +150,8 @@ int ClangLoader::parse(unique_ptr<llvm::Module> *mod, TableStorage &ts, const st
                                    "-fno-asynchronous-unwind-tables",
                                    "-x", "c", "-c", abs_file.c_str()});
 
-  KBuildHelper kbuild_helper(kdir, kernel_path_info.first);
+  KBuildHelper kbuild_helper(kdir, false);
+
   vector<string> kflags;
   if (kbuild_helper.get_flags(un.machine, &kflags))
     return -1;
@@ -176,7 +179,16 @@ int ClangLoader::parse(unique_ptr<llvm::Module> *mod, TableStorage &ts, const st
   IntrusiveRefCntPtr<DiagnosticIDs> DiagID(new DiagnosticIDs());
   DiagnosticsEngine diags(DiagID, &*diag_opts, diag_client);
 
+  printf("kernel flags:\n");
+  for (const auto& value : flags_cstr) {
+     std::cout << value << '\n';
+  }
+
+  std::cout << "\n";
   // set up the command line argument wrapper
+/*
+ * Force aaarch64 compiler
+ *
 #if defined(__powerpc64__)
 #if defined(_CALL_ELF) && _CALL_ELF == 2
   driver::Driver drv("", "powerpc64le-unknown-linux-gnu", diags);
@@ -186,10 +198,13 @@ int ClangLoader::parse(unique_ptr<llvm::Module> *mod, TableStorage &ts, const st
 #elif defined(__s390x__)
   driver::Driver drv("", "s390x-ibm-linux-gnu", diags);
 #elif defined(__aarch64__)
+ */
   driver::Driver drv("", "aarch64-unknown-linux-gnu", diags);
+/*
 #else
   driver::Driver drv("", "x86_64-unknown-linux-gnu", diags);
 #endif
+ */
   drv.setTitle("bcc-clang-driver");
   drv.setCheckInputsExist(false);
 

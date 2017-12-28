@@ -34,6 +34,7 @@ int KBuildHelper::get_flags(const char *uname_machine, vector<string> *cflags) {
   //               -e s/aarch64.*/arm64/
 
   string arch = uname_machine;
+/*
   if (!strncmp(uname_machine, "x86_64", 6)) {
     arch = "x86";
   } else if (uname_machine[0] == 'i' && !strncmp(&uname_machine[2], "86", 2)) {
@@ -53,8 +54,10 @@ int KBuildHelper::get_flags(const char *uname_machine, vector<string> *cflags) {
   } else if (!strncmp(uname_machine, "sh", 2)) {
     arch = "sh";
   } else if (!strncmp(uname_machine, "aarch64", 7)) {
+*/
     arch = "arm64";
-  }
+
+  //  }
 
   cflags->push_back("-nostdinc");
   cflags->push_back("-isystem");
@@ -84,6 +87,7 @@ int KBuildHelper::get_flags(const char *uname_machine, vector<string> *cflags) {
   cflags->push_back("-include");
   cflags->push_back("./include/linux/kconfig.h");
   cflags->push_back("-D__KERNEL__");
+  cflags->push_back("-D__ASM_SYSREG_H");
   cflags->push_back("-D__HAVE_BUILTIN_BSWAP16__");
   cflags->push_back("-D__HAVE_BUILTIN_BSWAP32__");
   cflags->push_back("-D__HAVE_BUILTIN_BSWAP64__");

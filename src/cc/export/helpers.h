@@ -523,6 +523,7 @@ struct pt_regs;
 int bpf_usdt_readarg(int argc, struct pt_regs *ctx, void *arg) asm("llvm.bpf.extra");
 int bpf_usdt_readarg_p(int argc, struct pt_regs *ctx, void *buf, u64 len) asm("llvm.bpf.extra");
 
+/*
 #ifdef __powerpc__
 #define PT_REGS_PARM1(ctx)	((ctx)->gpr[3])
 #define PT_REGS_PARM2(ctx)	((ctx)->gpr[4])
@@ -540,7 +541,7 @@ int bpf_usdt_readarg_p(int argc, struct pt_regs *ctx, void *buf, u64 len) asm("l
 #define PT_REGS_PARM4(x) ((x)->gprs[5])
 #define PT_REGS_PARM5(x) ((x)->gprs[6])
 #define PT_REGS_RET(x) ((x)->gprs[14])
-#define PT_REGS_FP(x) ((x)->gprs[11]) /* Works only with CONFIG_FRAME_POINTER */
+#define PT_REGS_FP(x) ((x)->gprs[11])
 #define PT_REGS_RC(x) ((x)->gprs[2])
 #define PT_REGS_SP(x) ((x)->gprs[15])
 #define PT_REGS_IP(x) ((x)->psw.addr)
@@ -555,6 +556,7 @@ int bpf_usdt_readarg_p(int argc, struct pt_regs *ctx, void *buf, u64 len) asm("l
 #define PT_REGS_IP(ctx)		((ctx)->ip)
 #define PT_REGS_SP(ctx)		((ctx)->sp)
 #elif defined(__aarch64__)
+*/
 #define PT_REGS_PARM1(x)	((x)->regs[0])
 #define PT_REGS_PARM2(x)	((x)->regs[1])
 #define PT_REGS_PARM3(x)	((x)->regs[2])
@@ -566,9 +568,12 @@ int bpf_usdt_readarg_p(int argc, struct pt_regs *ctx, void *buf, u64 len) asm("l
 #define PT_REGS_RC(x)		((x)->regs[0])
 #define PT_REGS_SP(x)		((x)->sp)
 #define PT_REGS_IP(x)		((x)->pc)
+
+/*
 #else
 #error "bcc does not support this platform yet"
 #endif
+*/
 
 #define lock_xadd(ptr, val) ((void)__sync_fetch_and_add(ptr, val))
 

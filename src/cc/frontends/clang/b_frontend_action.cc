@@ -46,16 +46,22 @@ const char *calling_conv_regs_s390x[] = {"gprs[2]", "gprs[3]", "gprs[4]",
 
 const char *calling_conv_regs_arm64[] = {"regs[0]", "regs[1]", "regs[2]",
                                        "regs[3]", "regs[4]", "regs[5]"};
+
+/*
 // todo: support more archs
 #if defined(__powerpc__)
 const char **calling_conv_regs = calling_conv_regs_ppc;
 #elif defined(__s390x__)
 const char **calling_conv_regs = calling_conv_regs_s390x;
 #elif defined(__aarch64__)
+*/
 const char **calling_conv_regs = calling_conv_regs_arm64;
+
+/*
 #else
 const char **calling_conv_regs = calling_conv_regs_x86;
 #endif
+*/
 
 using std::map;
 using std::move;
