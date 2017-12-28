@@ -88,6 +88,19 @@ class LibRemote(object):
         ret = self._remote_send_command(cmd)
         return ret[0]
 
+    def bpf_detach_kprobe(self, evname):
+        # this is hard to do since a signal needs to be delivered if
+        # bpfd is sleeping. For now do nothing
+        return 0
+
+        # At this point just restart the connection
+        # to kill bpfd which may be sleeping
+        self.remote.close_connection()
+        self.__init__(self.remote_name, self.remote_arg)
+        cmd = "BPF_DETACH_KPROBE {} 0".format(evname)
+        ret = self._remote_send_command(cmd)
+        return 0
+
     def bpf_prog_load(self, prog_type, func_str, license_str, kern_version):
         func_str_b64 = base64.b64encode(func_str)
         cmd = "BPF_PROG_LOAD {} {} {} {} {}".format(prog_type, len(func_str),
