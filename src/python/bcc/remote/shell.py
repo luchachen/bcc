@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import base
 import pexpect as pe
 
@@ -33,7 +34,8 @@ class ShellRemote(base.BccRemote):
 
     def send_command(self, cmd):
         # For debugging
-        print 'Sending command {}'.format(cmd)
+        if 'BPF_REMOTE_DEBUG' in os.environ and os.environ['BPF_REMOTE_DEBUG'] == '1':
+            print 'Sending command {}'.format(cmd)
         c = self.client
         c.sendline(cmd)
 
@@ -52,7 +54,8 @@ class ShellRemote(base.BccRemote):
             i = i + 1
 
         # For debugging
-        print 'Received {}'.format(ret[(i+1):][:50])
+        if 'BPF_REMOTE_DEBUG' in os.environ and os.environ['BPF_REMOTE_DEBUG'] == '1':
+            print 'Received {}'.format(ret[(i+1):][:50])
         return ret[(i+1):]
 
     def close_connection(self):
