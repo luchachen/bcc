@@ -196,6 +196,7 @@ class TableBase(MutableMapping):
         return leaf
 
     def __getitem__(self, key):
+        key_p = ct.pointer(key)
         leaf = self.Leaf()
         leaf_p = ct.pointer(leaf)
 
@@ -295,6 +296,7 @@ class TableBase(MutableMapping):
 
     def next(self, key):
         next_key = self.Key()
+        next_key_p = ct.pointer(next_key)
 
         if key is None:
             if self.libremote:
