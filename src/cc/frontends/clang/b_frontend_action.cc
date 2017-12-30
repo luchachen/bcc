@@ -771,8 +771,8 @@ bool BTypeVisitor::VisitVarDecl(VarDecl *Decl) {
       if (bpf_create_map_cb) {
         struct bpf_create_map_args args;
 
-        // TODO: Add support for table.name.c_str(), libbpf on bpfd side needs to be updated accordingly
         args.type = map_type;
+        args.name = (char *)table.name.c_str();
         args.key_size = table.key_size;
         args.value_size = table.leaf_size;
         args.max_entries = table.max_entries;

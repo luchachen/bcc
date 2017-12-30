@@ -129,6 +129,7 @@ class PerfSWConfig:
 
 class BpfCreateMapArgs(ct.Structure):
     _fields_ = [("type", ct.c_uint),
+                ("name", ct.c_char_p),
                 ("key_size", ct.c_uint),
                 ("value_size", ct.c_uint),
                 ("max_entries", ct.c_uint),
@@ -344,14 +345,14 @@ class BPF(object):
         ct_func_start = lib.bpf_function_start(self.module, func_name.encode("ascii"))
         ct_func_size  = lib.bpf_function_size(self.module, func_name.encode("ascii"))
 
-        # Command format: BPF_PROG_LOAD type prog_len license kern_version binary_data
+        # Command format: BPF_PROG_LOAD type name prog_len license kern_version binary_data
 
         func_str = ct.string_at(ct_func_start, ct_func_size)
         license_str = ct.string_at(lib.bpf_module_license(self.module))
         kern_version = lib.bpf_module_kern_version(self.module)
 
         if self.libremote:
-            remotefd = self.libremote.bpf_prog_load(prog_type, func_str, license_str,
+            remotefd = self.libremote.bpf_prog_load(prog_type, func_name, func_str, license_str,
                                       kern_version)
             if remotefd < 0:
                 raise Exception('Failed to load BPF program from remote')
@@ -494,11 +495,15 @@ class BPF(object):
             self._user_cb(pid, cc)
 
     def _bpf_remote_create_map_cb(self, data):
+        print("entered create map\n");
         if not self.libremote:
             return -1
         args = ct.cast(data, ct.POINTER(BpfCreateMapArgs)).contents
-        ret = self.libremote.bpf_create_map(args.type, args.key_size, args.value_size,
-                        args.max_entries, args. map_flags)
+        name = args.name
+        # name = ct.string_at(args.name)
+        print("got map name as: {} with type {}\n".format(name, type(name)))
+        ret = self.libremote.bpf_create_map(args.type, name, args.key_size, args.value_size,
+                        args.max_entries, args.map_flags)
         return ret
 
     @staticmethod
@@ -573,8 +578,7 @@ class BPF(object):
 
         # TODO: Add support for remote cbs
         if self.libremote:
-            res = self.libremote.bpf_attach_kprobe(fn.fd, 0,
-                ev_name, event, pid, cpu, group_fd)
+            res = self.libremote.bpf_attach_kprobe(fn.fd, 0, ev_name, event)
             if res < 0:
                 raise Exception("Failed to attach BPF to kprobe")
             self._add_kprobe(ev_name, None)
@@ -622,8 +626,7 @@ class BPF(object):
 
         # TODO: Add support for remote cbs
         if self.libremote:
-            res = self.libremote.bpf_attach_kprobe(fn.fd, 1,
-                ev_name, event, pid, cpu, group_fd)
+            res = self.libremote.bpf_attach_kprobe(fn.fd, 1, ev_name, event)
             if res < 0:
                 raise Exception("Failed to attach BPF to kprobe")
             self._add_kprobe(ev_name, None)
@@ -787,8 +790,7 @@ class BPF(object):
 
         # TODO: Add support for remote cbs
         if self.libremote:
-            res = self.libremote.bpf_attach_tracepoint(fn.fd,
-                tp_category, tp_name, pid, cpu, group_fd)
+            res = self.libremote.bpf_attach_tracepoint(fn.fd, tp_category, tp_name)
             if res < 0:
                 raise Exception("Failed to attach BPF to tracepoint")
             self.open_tracepoints[tp] = None

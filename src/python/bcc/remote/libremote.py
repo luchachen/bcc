@@ -76,15 +76,13 @@ class LibRemote(object):
         ret = self._remote_send_command(cmd)
         return ret[0] if ret[0] < 0 else ret[1]
 
-    def bpf_attach_tracepoint(self, fd, cat, tpname, pid, cpu, gfd):
-        cmd = "BPF_ATTACH_TRACEPOINT {} {} {} {} {} {}".format(fd,
-            cat, tpname, pid, cpu, gfd)
+    def bpf_attach_tracepoint(self, fd, cat, tpname):
+        cmd = "BPF_ATTACH_TRACEPOINT {} {} {}".format(fd, cat, tpname)
         ret = self._remote_send_command(cmd)
         return ret[0]
 
-    def bpf_attach_kprobe(self, fd, t, evname, fnname, pid, cpu, gfd):
-        cmd = "BPF_ATTACH_KPROBE {} {} {} {} {} {} {}".format(fd, t,
-            evname, fnname, pid, cpu, gfd)
+    def bpf_attach_kprobe(self, fd, t, evname, fnname):
+        cmd = "BPF_ATTACH_KPROBE {} {} {} {}".format(fd, t, evname, fnname)
         ret = self._remote_send_command(cmd)
         return ret[0]
 
@@ -101,16 +99,15 @@ class LibRemote(object):
         ret = self._remote_send_command(cmd)
         return 0
 
-    def bpf_prog_load(self, prog_type, func_str, license_str, kern_version):
-        func_str_b64 = base64.b64encode(func_str)
-        cmd = "BPF_PROG_LOAD {} {} {} {} {}".format(prog_type, len(func_str),
+    def bpf_prog_load(self, prog_type, name, func_str, license_str, kern_version):
+        cmd = "BPF_PROG_LOAD {} {} {} {} {} {}".format(prog_type, name, len(func_str),
               license_str, kern_version, base64.b64encode(func_str))
         ret = self._remote_send_command(cmd)
         return ret[0]
 
-    def bpf_create_map(self, map_type, key_size, leaf_size, max_entries,
+    def bpf_create_map(self, map_type, name, key_size, leaf_size, max_entries,
                        flags):
-        cmd = "BPF_CREATE_MAP {} {} {} {} {}".format(map_type, key_size,
+        cmd = "BPF_CREATE_MAP {} {} {} {} {} {}".format(map_type, name, key_size,
                                     leaf_size, max_entries, flags)
         ret = self._remote_send_command(cmd)
         return ret[0]
