@@ -572,12 +572,13 @@ int bpf_usdt_readarg_p(int argc, struct pt_regs *ctx, void *buf, u64 len) asm("l
 #define PT_REGS_PARM4(ctx)	((ctx)->cx)
 #define PT_REGS_PARM5(ctx)	((ctx)->r8)
 #define PT_REGS_PARM6(ctx)	((ctx)->r9)
-#define PT_REGS_FP(ctx)         ((ctx)->bp) /* Works only with CONFIG_FRAME_POINTER */
+#define PT_REGS_FP(ctx)         ((ctx)->bp)
 #define PT_REGS_RC(ctx)		((ctx)->ax)
 #define PT_REGS_IP(ctx)		((ctx)->ip)
 #define PT_REGS_SP(ctx)		((ctx)->sp)
 #elif defined(__aarch64__)
 */
+
 #define PT_REGS_PARM1(x)	((x)->regs[0])
 #define PT_REGS_PARM2(x)	((x)->regs[1])
 #define PT_REGS_PARM3(x)	((x)->regs[2])
