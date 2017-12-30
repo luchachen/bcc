@@ -269,7 +269,7 @@ class BPF(object):
         """
 
         # Debug code
-        self.libremote = libremote.LibRemote('shell')
+        self.libremote = libremote.LibRemote('adb')
 
         self.open_kprobes = {}
         self.open_uprobes = {}
