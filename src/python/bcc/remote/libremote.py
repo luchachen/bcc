@@ -30,6 +30,10 @@ class LibRemote(object):
         # Get the <class>Remote class object
         cls = get_remote_cls(remote_name)
 
+        # Cache of maps, format: map_cache[map_fd] = { 'key1': 'value1', .. }
+        self.nkey_cache = {}
+        self.map_cache = {}
+
         # Create the remote connection
         self.remote = cls(remote_arg)
 
@@ -110,6 +114,10 @@ class LibRemote(object):
         cmd = "BPF_CREATE_MAP {} {} {} {} {} {}".format(map_type, name, key_size,
                                     leaf_size, max_entries, flags)
         ret = self._remote_send_command(cmd)
+
+        if ret[0] > 0:
+            self.map_cache[ret[0]] = {}
+            self.nkey_cache[ret[0]] = {}
         return ret[0]
 
     def bpf_update_elem(self, map_fd, kstr, klen, lstr, llen, flags):
@@ -119,6 +127,10 @@ class LibRemote(object):
         return ret[0]
 
     def bpf_lookup_elem(self, map_fd, kstr, klen, llen):
+        if map_fd in self.map_cache:
+            if kstr in self.map_cache[map_fd]:
+                return (0, [self.map_cache[map_fd][kstr]])
+
         cmd = "BPF_LOOKUP_ELEM {} {} {} {}".format(map_fd, kstr, klen, llen)
         ret = self._remote_send_command(cmd)
         return ret
@@ -128,12 +140,36 @@ class LibRemote(object):
         ret = self._remote_send_command(cmd)
         return ret[0]
 
-    def bpf_get_first_key(self, map_fd, size):
-        cmd = "BPF_GET_FIRST_KEY {} {}".format(map_fd, size)
+    def bpf_get_first_key(self, map_fd, klen, vlen):
+        cmd = "BPF_GET_FIRST_KEY {} {} {}".format(map_fd, klen, vlen)
         ret = self._remote_send_command(cmd)
-        return ret
+        if ret[0] < 0:
+            return ret
+
+        # bpfd will dump the entire map on first get key so it can be
+        # cached for future use
+        key_values = ret[1]
+        first_key = key_values[0]
+
+        it = iter(key_values)
+        prev_key = None
+        for i in it:
+            key = i
+            if not key:
+                continue
+            value = next(it)
+            self.map_cache[map_fd][key] = value
+            if prev_key:
+                self.nkey_cache[map_fd][prev_key] = key
+            prev_key = key
+
+        return (0, [first_key])
 
     def bpf_get_next_key(self, map_fd, kstr, klen):
+        if map_fd in self.nkey_cache:
+            if kstr in self.nkey_cache[map_fd]:
+                return (0, [self.nkey_cache[map_fd][kstr]])
+
         cmd = "BPF_GET_NEXT_KEY {} {} {}".format(map_fd, kstr, klen)
         ret = self._remote_send_command(cmd)
         return ret
@@ -141,11 +177,16 @@ class LibRemote(object):
     def bpf_delete_elem(self, map_fd, kstr, klen):
         cmd = "BPF_DELETE_ELEM {} {} {}".format(map_fd, kstr, klen)
         ret = self._remote_send_command(cmd)
+        # Invalidate cache for this map on any element delete
+        self.map_cache[map_fd] = {}
+        self.nkey_cache[map_fd] = {}
         return ret[0]
 
     def bpf_clear_map(self, map_fd, klen):
         cmd = "BPF_CLEAR_MAP {} {}".format(map_fd, klen)
         ret = self._remote_send_command(cmd)
+        self.map_cache[map_fd] = {}
+        self.nkey_cache[map_fd] = {}
         return ret[0]
 
     def perf_reader_poll(self, fd_callbacks, timeout):

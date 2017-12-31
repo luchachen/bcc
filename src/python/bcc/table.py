@@ -307,7 +307,8 @@ class TableBase(MutableMapping):
         if key is None:
             if self.libremote:
                 size = ct.sizeof(self.Key)
-                ret = self.libremote.bpf_get_first_key(self.map_fd, size)
+                vlen = ct.sizeof(self.Leaf)
+                ret = self.libremote.bpf_get_first_key(self.map_fd, size, vlen)
                 if ret[0] < 0:
                     raise StopIteration()
                 key_str = ret[1][0]
