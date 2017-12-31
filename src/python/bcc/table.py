@@ -264,6 +264,12 @@ class TableBase(MutableMapping):
         return [value for value in self.itervalues()]
 
     def clear(self):
+        # Clear map optimized for remotes
+        if self.libremote:
+            klen = ct.sizeof(self.Key)
+            self.libremote.bpf_clear_map(self.map_fd, klen)
+            return
+
         # default clear uses popitem, which can race with the bpf prog
         for k in self.keys():
             self.__delitem__(k)
