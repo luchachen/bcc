@@ -143,6 +143,11 @@ class LibRemote(object):
         ret = self._remote_send_command(cmd)
         return ret[0]
 
+    def bpf_clear_map(self, map_fd, klen):
+        cmd = "BPF_CLEAR_MAP {} {}".format(map_fd, klen)
+        ret = self._remote_send_command(cmd)
+        return ret[0]
+
     def perf_reader_poll(self, fd_callbacks, timeout):
         cmd = ""
         fd_cb_dict = {}
