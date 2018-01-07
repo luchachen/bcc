@@ -1,3 +1,0 @@
-export ARCH=arm64
-export BCC_KERNEL_SOURCE=/home/joel/sdb/hikey-kernel/
-export BCC_REMOTE=adb
