@@ -201,6 +201,42 @@ int ClangLoader::parse(unique_ptr<llvm::Module> *mod, TableStorage &ts,
   return 0;
 }
 
+string get_clang_target(void) {
+  const char *archenv = getenv("ARCH");
+  if (!archenv)
+    archenv = getenv("BCC_ARCH");
+
+  if (!archenv) {
+#if defined(__powerpc64__)
+#if defined(_CALL_ELF) && _CALL_ELF == 2
+    return "powerpc64le-unknown-linux-gnu";
+#else
+    return "powerpc64-unknown-linux-gnu";
+#endif
+#elif defined(__s390x__)
+    return "s390x-ibm-linux-gnu";
+#elif defined(__aarch64__)
+    return "aarch64-unknown-linux-gnu";
+#else
+    return "x86_64-unknown-linux-gnu";
+#endif
+  }
+
+  if (!strcmp(archenv, "powerpc")) {
+#if defined(_CALL_ELF) && _CALL_ELF == 2
+    return "powerpc64le-unknown-linux-gnu";
+#else
+    return "powerpc64-unknown-linux-gnu";
+#endif
+  } else if (!strcmp(archenv, "s390x")) {
+    return "s390x-ibm-linux-gnu";
+  } else if (!strcmp(archenv, "arm64")) {
+    return "aarch64-unknown-linux-gnu";
+  } else {
+    return "x86_64-unknown-linux-gnu";
+  }
+}
+
 int ClangLoader::do_compile(unique_ptr<llvm::Module> *mod, TableStorage &ts,
                             bool in_memory,
                             const vector<const char *> &flags_cstr_in,
@@ -235,19 +271,10 @@ int ClangLoader::do_compile(unique_ptr<llvm::Module> *mod, TableStorage &ts,
   }
 
   // set up the command line argument wrapper
-#if defined(__powerpc64__)
-#if defined(_CALL_ELF) && _CALL_ELF == 2
-  driver::Driver drv("", "powerpc64le-unknown-linux-gnu", diags);
-#else
-  driver::Driver drv("", "powerpc64-unknown-linux-gnu", diags);
-#endif
-#elif defined(__s390x__)
-  driver::Driver drv("", "s390x-ibm-linux-gnu", diags);
-#elif defined(__aarch64__)
-  driver::Driver drv("", "aarch64-unknown-linux-gnu", diags);
-#else
-  driver::Driver drv("", "x86_64-unknown-linux-gnu", diags);
-#endif
+
+  string target_triple = get_clang_target();
+  driver::Driver drv("", target_triple, diags);
+
   drv.setTitle("bcc-clang-driver");
   drv.setCheckInputsExist(false);
 
