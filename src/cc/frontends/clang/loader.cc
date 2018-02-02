@@ -29,6 +29,7 @@
 #include <unistd.h>
 #include <utility>
 #include <vector>
+#include <iostream>
 #include <linux/bpf.h>
 
 #include <clang/Basic/FileManager.h>
@@ -108,11 +109,24 @@ int ClangLoader::parse(unique_ptr<llvm::Module> *mod, TableStorage &ts,
   unique_ptr<llvm::MemoryBuffer> main_buf;
   struct utsname un;
   uname(&un);
-  string kdir = string(KERNEL_MODULES_DIR) + "/" + un.release;
-  auto kernel_path_info = get_kernel_path_info (kdir);
+  string kdir, kpath;
+  const char *kpath_env = ::getenv("BCC_KERNEL_SOURCE");
+  bool has_kpath_source = false;
+
+  if (kpath_env) {
+    kpath = string(kpath_env);
+  } else {
+    kdir = string(KERNEL_MODULES_DIR) + "/" + un.release;
+    auto kernel_path_info = get_kernel_path_info(kdir);
+    has_kpath_source = kernel_path_info.first;
+    kpath = kdir + "/" + kernel_path_info.second;
+  }
+
+  if (getenv("BCC_KBUILD_DEBUG"))
+    std::cout << "Using kernel directory at: " << kpath.c_str() << "\n";
 
   // clang needs to run inside the kernel dir
-  DirStack dstack(kdir + "/" + kernel_path_info.second);
+  DirStack dstack(kpath);
   if (!dstack.ok())
     return -1;
 
@@ -143,7 +157,8 @@ int ClangLoader::parse(unique_ptr<llvm::Module> *mod, TableStorage &ts,
                                    "-fno-asynchronous-unwind-tables",
                                    "-x", "c", "-c", abs_file.c_str()});
 
-  KBuildHelper kbuild_helper(kdir, kernel_path_info.first);
+  KBuildHelper kbuild_helper(kpath_env ? kpath : kdir, has_kpath_source);
+
   vector<string> kflags;
   if (kbuild_helper.get_flags(un.machine, &kflags))
     return -1;
@@ -210,6 +225,14 @@ int ClangLoader::do_compile(unique_ptr<llvm::Module> *mod, TableStorage &ts,
 
   IntrusiveRefCntPtr<DiagnosticIDs> DiagID(new DiagnosticIDs());
   DiagnosticsEngine diags(DiagID, &*diag_opts, diag_client);
+
+  if (getenv("BCC_KBUILD_DEBUG")) {
+    std::cout << "Kernel flags for the build are set to:\n";
+    for (const auto& value : flags_cstr) {
+      std::cout << value << "\n";
+    }
+    std::cout << "\n";
+  }
 
   // set up the command line argument wrapper
 #if defined(__powerpc64__)
