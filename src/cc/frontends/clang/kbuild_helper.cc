@@ -44,11 +44,6 @@ int KBuildHelper::get_flags(const char *uname_machine, vector<string> *cflags) {
     arch = "x86";
   } else if (!strncmp(uname_machine, "arm", 3)) {
     arch = "arm";
-    // disable including kernel header files with assembly code
-    // as there is no assembly parser for ARM implemented yet
-    // same for arm64 arch: https://patchwork.kernel.org/patch/7605601/
-    cflags->push_back("-D__ASM_SYSREG_H");
-    cflags->push_back("-D__LINUX_ARM_ARCH__=7");
   } else if (!strncmp(uname_machine, "sa110", 5)) {
     arch = "arm";
   } else if (!strncmp(uname_machine, "s390x", 5)) {
@@ -69,6 +64,14 @@ int KBuildHelper::get_flags(const char *uname_machine, vector<string> *cflags) {
   archenv = getenv("ARCH");
   if (archenv)
     arch = string(archenv);
+
+  if (!strncmp(arch.c_str(), "arm", 3)) {
+    // disable including kernel header files with assembly code
+    // as there is no assembly parser for ARM implemented yet
+    // same for arm64 arch: https://patchwork.kernel.org/patch/7605601/
+    cflags->push_back("-D__ASM_SYSREG_H");
+    cflags->push_back("-D__LINUX_ARM_ARCH__=7");
+  }
 
   cflags->push_back("-nostdinc");
   cflags->push_back("-isystem");
