@@ -110,9 +110,11 @@ int ClangLoader::parse(unique_ptr<llvm::Module> *mod, TableStorage &ts,
   unique_ptr<llvm::MemoryBuffer> main_buf;
   struct utsname un;
   uname(&un);
-  string kdir, kpath;
+  string kdir, kpath, kout;
   const char *kpath_env = ::getenv("BCC_KERNEL_SOURCE");
+  const char *kout_env = ::getenv("BCC_KERNEL_OUT");
   bool has_kpath_source = false;
+  bool has_kout = false;
 
   if (kpath_env) {
     kpath = string(kpath_env);
@@ -121,6 +123,11 @@ int ClangLoader::parse(unique_ptr<llvm::Module> *mod, TableStorage &ts,
     auto kernel_path_info = get_kernel_path_info(kdir);
     has_kpath_source = kernel_path_info.first;
     kpath = kdir + "/" + kernel_path_info.second;
+  }
+
+  if (kout_env) {
+    kout = string(kout_env);
+    has_kout = true;
   }
 
   if (flags_ & DEBUG_PREPROCESSOR)
@@ -158,9 +165,14 @@ int ClangLoader::parse(unique_ptr<llvm::Module> *mod, TableStorage &ts,
                                    "-fno-asynchronous-unwind-tables",
                                    "-x", "c", "-c", abs_file.c_str()});
 
-  KBuildHelper kbuild_helper(kpath_env ? kpath : kdir, has_kpath_source);
+  KBuildHelper kbuild_helper(kpath_env ? kpath : kdir, has_kpath_source, has_kout);
+
+  KBuildHelper kbuild_helperout(kout_env ? kout: kdir, has_kpath_source, has_kout);
 
   vector<string> kflags;
+  if (kbuild_helperout.get_flags(un.machine, &kflags))
+    return -1;
+
   if (kbuild_helper.get_flags(un.machine, &kflags))
     return -1;
   if (flags_ & DEBUG_SOURCE)
@@ -218,6 +230,9 @@ void *get_clang_target_cb(bcc_arch_t arch)
       break;
     case BCC_ARCH_ARM64:
       ret = "aarch64-unknown-linux-gnu";
+      break;
+    case BCC_ARCH_ARM:
+      ret = "armv7a-none-eabi";
       break;
     default:
       ret = "x86_64-unknown-linux-gnu";

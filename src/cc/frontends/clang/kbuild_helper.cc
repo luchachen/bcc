@@ -24,8 +24,8 @@ namespace ebpf {
 using std::string;
 using std::vector;
 
-KBuildHelper::KBuildHelper(const std::string &kdir, bool has_source_dir) : kdir_(kdir),
-                                                                           has_source_dir_(has_source_dir) {
+KBuildHelper::KBuildHelper(const std::string &kdir, bool has_source_dir, bool has_kernel_out) : kdir_(kdir),
+                                                                           has_source_dir_(has_source_dir), has_kernel_out_ (has_kernel_out) {
 }
 
 // read the flags from cache or learn
@@ -80,6 +80,16 @@ int KBuildHelper::get_flags(const char *uname_machine, vector<string> *cflags) {
     cflags->push_back("-I" + kdir_ + "/build/include/uapi");
     cflags->push_back("-I" + kdir_ + "/build/include/generated");
     cflags->push_back("-I" + kdir_ + "/build/include/generated/uapi");
+  } else  if (has_kernel_out_) {
+    cflags->push_back("-I" + kdir_ + "/arch/"+arch+"/include");
+    cflags->push_back("-I" + kdir_ + "/arch/"+arch+"/include/generated/uapi");
+    cflags->push_back("-I" + kdir_ + "/arch/"+arch+"/include/generated");
+    cflags->push_back("-I" + kdir_ + "/include");
+    cflags->push_back("-I" + kdir_ + "/arch/"+arch+"/include/uapi");
+    cflags->push_back("-I" + kdir_ + "/arch/"+arch+"/include/generated/uapi");
+    cflags->push_back("-I" + kdir_ + "/include/uapi");
+    cflags->push_back("-I" + kdir_ + "/include/generated");
+    cflags->push_back("-I" + kdir_ + "/include/generated/uapi");
   }
 
   cflags->push_back("-I./arch/"+arch+"/include");

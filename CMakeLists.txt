@@ -7,7 +7,7 @@ if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Release)
 endif()
 
-enable_testing()
+#enable_testing()
 
 include(cmake/GetGitRevisionDescription.cmake)
 include(cmake/version.cmake)
