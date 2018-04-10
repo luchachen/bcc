@@ -44,6 +44,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 #include <linux/if_alg.h>
+#include <inttypes.h>
 
 #include "libbpf.h"
 #include "perf_reader.h"
@@ -60,6 +61,8 @@
 #define __NR_bpf 351
 #elif defined(__aarch64__)
 #define __NR_bpf 280
+#elif defined(__arm__)
+#define __NR_bpf 386
 #else
 #define __NR_bpf 321
 #endif
@@ -922,7 +925,7 @@ int bpf_attach_uprobe(int progfd, enum bpf_probe_attach_type attach_type,
       fprintf(stderr, "Event name (%s) is too long for buffer\n", ev_name);
       goto error;
     }
-    res = snprintf(buf, sizeof(buf), "%c:%ss/%s %s:0x%lx", attach_type==BPF_PROBE_ENTRY ? 'p' : 'r',
+    res = snprintf(buf, sizeof(buf), "%c:%ss/%s %s:0x%"PRIx64, attach_type==BPF_PROBE_ENTRY ? 'p' : 'r',
                    event_type, event_alias, binary_path, offset);
     if (res < 0 || res >= sizeof(buf)) {
       fprintf(stderr, "Event alias (%s) too long for buffer\n", event_alias);

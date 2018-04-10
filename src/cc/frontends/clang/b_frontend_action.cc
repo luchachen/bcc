@@ -50,8 +50,21 @@ const char *calling_conv_regs_s390x[] = {"gprs[2]", "gprs[3]", "gprs[4]",
 const char *calling_conv_regs_arm64[] = {"regs[0]", "regs[1]", "regs[2]",
                                        "regs[3]", "regs[4]", "regs[5]"};
 
-const char *calling_conv_regs_arm[] = {"regs[0]", "regs[1]", "regs[2]",
-                                       "regs[3]", "regs[4]", "regs[5]"};
+const char *calling_conv_regs_arm[] = {"uregs[0]", "uregs[1]", "uregs[2]",
+                                       "uregs[3]"};
+
+// todo: support more archs
+#if defined(__powerpc__)
+const char **calling_conv_regs = calling_conv_regs_ppc;
+#elif defined(__s390x__)
+const char **calling_conv_regs = calling_conv_regs_s390x;
+#elif defined(__aarch64__)
+const char **calling_conv_regs = calling_conv_regs_arm64;
+#elif defined(__arm__)
+const char **calling_conv_regs = calling_conv_regs_arm;
+#else
+const char **calling_conv_regs = calling_conv_regs_x86;
+#endif
 
 void *get_call_conv_cb(bcc_arch_t arch)
 {
@@ -225,7 +238,7 @@ bool ProbeVisitor::VisitUnaryOperator(UnaryOperator *E) {
   string rhs = rewriter_.getRewrittenText(expansionRange(sub->getSourceRange()));
   string text;
   text = "({ typeof(" + E->getType().getAsString() + ") _val; __builtin_memset(&_val, 0, sizeof(_val));";
-  text += " bpf_probe_read(&_val, sizeof(_val), (u64)";
+  text += " bpf_probe_read(&_val, sizeof(_val), (char *)";
   text += rhs + "); _val; })";
   rewriter_.ReplaceText(expansionRange(E->getSourceRange()), text);
   return true;
@@ -261,8 +274,9 @@ bool ProbeVisitor::VisitMemberExpr(MemberExpr *E) {
   string base_type = base->getType()->getPointeeType().getAsString();
   string pre, post;
   pre = "({ typeof(" + E->getType().getAsString() + ") _val; __builtin_memset(&_val, 0, sizeof(_val));";
-  pre += " bpf_probe_read(&_val, sizeof(_val), (u64)&";
-  post = rhs + "); _val; })";
+  pre += " bpf_probe_read(&_val, sizeof(_val), (char *)";
+  post = " + offsetof(" + base_type + ", " + rhs + ")";
+  post += "); _val; })";
   rewriter_.InsertText(E->getLocStart(), pre);
   rewriter_.ReplaceText(expansionRange(SourceRange(member, E->getLocEnd())), post);
   return true;

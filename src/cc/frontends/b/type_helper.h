@@ -36,7 +36,9 @@ static inline size_t enum_to_size(const FieldType t) {
     case UINT16_T: return sizeof(uint16_t);
     case UINT32_T: return sizeof(uint32_t);
     case UINT64_T: return sizeof(uint64_t);
+#ifdef __SIZEOF_INT128__
     case UINT128_T: return sizeof(__uint128_t);
+#endif
     default:
       return 0;
   }
